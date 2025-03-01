@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/">
+        <file>assets/images/pizza.png</file>
+        <file>assets/images/race-flag.png</file>
+    </qresource>
+</RCC>

@@ -74,11 +74,11 @@ void OrderCartWidget::orderCartSkuWidget(OrderItem &orderItem, QVBoxLayout *&sku
         plusButton->setStyleSheet(buttonStyle);
 
         // Fix lambda parameter copying issue (Pass by Reference)
-        connect(plusButton, &QPushButton::clicked, this, [this, &orderItem, &orderItemSku]() {
+        connect(plusButton, &QPushButton::clicked, this, [this, orderItem, orderItemSku]() {
             onIncreaseClicked(orderItem, orderItemSku);
         });
 
-        connect(minusButton, &QPushButton::clicked, this, [this, &orderItem, &orderItemSku]() {
+        connect(minusButton, &QPushButton::clicked, this, [this, orderItem, orderItemSku]() {
             onDecreaseClicked(orderItem, orderItemSku);
         });
 

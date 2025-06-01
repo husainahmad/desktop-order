@@ -7,6 +7,7 @@
 #include <QNetworkReply>
 #include <QLineEdit>
 #include <QPushButton>
+#include <setting.h>
 
 namespace Ui {
 class LoginScreen;
@@ -30,6 +31,7 @@ private:
     QLineEdit *usernameEdit;
     QLineEdit *passwordEdit;
     QPushButton *loginButton;
+    Setting settingConfig;
 };
 
 #endif // LOGINSCREEN_H

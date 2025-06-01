@@ -11,6 +11,7 @@
 #include <QJsonArray>
 #include <QSettings>
 #include <QLabel>
+#include <setting.h>
 
 LoginScreen::LoginScreen(QWidget *parent)
     : QWidget(parent), ui(new Ui::LoginScreen), networkManager(new QNetworkAccessManager(this))
@@ -81,7 +82,9 @@ void LoginScreen::handleLogin() {
         return;
     }
 
-    QNetworkRequest requestLogin(QUrl(QString("http://localhost:8282/api/v1/auth/login")));
+    QString loginUrl = settingConfig.getApiEndpoint("auth", "login");
+
+    QNetworkRequest requestLogin(loginUrl);
     requestLogin.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
 
     QJsonObject json;
@@ -103,8 +106,9 @@ void LoginScreen::handleLogin() {
             QJsonObject jsonObj = jsonDoc.object();
             QString dataToken = jsonObj["data"].toString();
 
-            QSettings settings;
-            settings.setValue("authToken", dataToken);
+            settingConfig.setValue("authToken", dataToken);
+            settingConfig.sync();
+
             handleUserDetail();
         } else {
             qDebug() << "Login failed: " << replyDetail->errorString();
@@ -123,8 +127,11 @@ void LoginScreen::handleUserDetail() {
         return;
     }
 
-    QNetworkRequest requestUser(QUrl(QString("http://localhost:8080/api/v1/user/%1").arg(username)));
+    QString loginUrl = settingConfig.getApiEndpoint("auth","user");
+
+    QNetworkRequest requestUser(QUrl(loginUrl + "/" + username));
     requestUser.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+    requestUser.setRawHeader("Authorization", "Bearer " + settingConfig.getValue("authToken").toString().toUtf8());
 
     QNetworkReply* replyDetail = networkManager->get(requestUser);
 
@@ -150,14 +157,15 @@ void LoginScreen::handleUserDetail() {
 
             User user(userObj["id"].toInt(), userObj["username"].toString(), store);
 
-            QSettings settings;
-            settings.setValue("userDetail.username", user.username);
-            settings.setValue("userDetail.store.id", user.store.id);
-            settings.setValue("userDetail.store.name", user.store.name);
-            settings.setValue("userDetail.chain.id", user.store.chain.id);
-            settings.setValue("userDetail.chain.name", user.store.chain.name);
-            settings.setValue("userDetail.brand.id", user.store.chain.brand.id);
-            settings.setValue("userDetail.brand.name", user.store.chain.brand.name);
+            settingConfig.setValue("userDetail.username", user.username);
+            settingConfig.setValue("userDetail.store.id", user.store.id);
+            settingConfig.setValue("userDetail.store.name", user.store.name);
+            settingConfig.setValue("userDetail.chain.id", user.store.chain.id);
+            settingConfig.setValue("userDetail.chain.name", user.store.chain.name);
+            settingConfig.setValue("userDetail.brand.id", user.store.chain.brand.id);
+            settingConfig.setValue("userDetail.brand.name", user.store.chain.brand.name);
+            settingConfig.sync();
+
             OrderScreen *orderScreen = new OrderScreen();
             orderScreen->showFullScreen();
 

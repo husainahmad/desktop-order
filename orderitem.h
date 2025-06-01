@@ -10,8 +10,9 @@ class OrderItem
 public:
     int productId;
     QString productName;
+    int categoryId;
     QList<OrderItemSku> orderItemSkus;
-    OrderItem(int productId, QString productName, QList<OrderItemSku> orderItemSkus);
+    OrderItem(int productId, QString productName, int categoryId, QList<OrderItemSku> orderItemSkus);
 };
 
 #endif // ORDERITEM_H

@@ -3,6 +3,7 @@
 #include "ui_orderscreen.h"
 #include "ordersummary.h"
 #include "ordertablewidget.h"
+#include "orderprint.h"
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -17,10 +18,12 @@
 #include <QJsonArray>
 #include <QMessageBox>
 #include <QCloseEvent>
+#include <QUrlQuery>
 
 OrderScreen::OrderScreen(QWidget *parent)
     : QWidget(parent)
-    , ui(new Ui::OrderScreen), networkManager(new QNetworkAccessManager(this))
+    , ui(new Ui::OrderScreen),
+    networkManager(new QNetworkAccessManager(this))
 {
     ui->setupUi(this);
 
@@ -85,33 +88,45 @@ OrderScreen::OrderScreen(QWidget *parent)
     tabWidget->addTab(firstTab, "Orders");
 
     // Buttons for adding and removing tabs
-    QPushButton *addTabButton = new QPushButton("➕ Add Order", this);
+    QPushButton *addOrderButton = new QPushButton("➕ Add Order", this);
+    QPushButton *settlementButton = new QPushButton("💰 Settlement", this);
 
-    // Set fixed height for better appearance
-    addTabButton->setFixedHeight(40);
+    QSize buttonSize(200, 50);  // width, height
+    addOrderButton->setMinimumSize(buttonSize);
+    settlementButton->setMinimumSize(buttonSize);
 
-    // Style the buttons with Qt StyleSheet
+    // Style the buttons
     QString buttonStyle = "QPushButton {"
                           "background-color: #4CAF50; color: white;"
-                          "border-radius: 8px; padding: 10px; font-size: 14px;"
-                          "border: 1px solid #388E3C;"
+                          "border-radius: 10px; padding: 15px; font-size: 18px;"
+                          "border: 2px solid #388E3C;"
                           "}"
                           "QPushButton:hover {"
                           "background-color: #45a049;"
                           "}";
 
-    addTabButton->setStyleSheet(buttonStyle);
+    addOrderButton->setStyleSheet(buttonStyle);
+    settlementButton->setStyleSheet(buttonStyle);
 
+    // Create a horizontal layout for the buttons
     QWidget *tabButtonWidget = new QWidget();
     QHBoxLayout *tabButtonLayout = new QHBoxLayout(tabButtonWidget);
-    tabButtonLayout->addWidget(addTabButton);
+    tabButtonLayout->setContentsMargins(20, 10, 20, 10);
+    tabButtonLayout->setSpacing(20);
+    tabButtonLayout->addStretch(); // Optional: center buttons
+    tabButtonLayout->addWidget(addOrderButton);
+    tabButtonLayout->addWidget(settlementButton);
+    tabButtonLayout->addStretch();
 
     tabButtonWidget->setLayout(tabButtonLayout);
 
+    // Add to main layout
     mainLayout->addWidget(tabButtonWidget);
 
     // Connect button signals to slots
-    connect(addTabButton, &QPushButton::clicked, this, &OrderScreen::addNewTabWithOrderForm);
+    connect(addOrderButton, &QPushButton::clicked, this, &OrderScreen::onOrderClicked);
+    connect(settlementButton, &QPushButton::clicked, this, &OrderScreen::onSettlementClicked);
+
     connect(tabWidget, &QTabWidget::currentChanged, this, &OrderScreen::onTabChanged);  // 👈 Connect tab change event
 
     setLayout(mainLayout);
@@ -120,8 +135,11 @@ OrderScreen::OrderScreen(QWidget *parent)
 }
 
 void OrderScreen::fetchDataFromAPI() {
-    QNetworkRequest requestOrder(QUrl(QString("http://localhost:8088/api/v1/order")));
-    requestOrder.setRawHeader("Authorization", "Bearer " + settings.value("authToken").toString().toUtf8());
+
+    QString orderUrl = settingConfig.getApiEndpoint("order","daily");
+
+    QNetworkRequest requestOrder(orderUrl);
+    requestOrder.setRawHeader("Authorization", "Bearer " + settingConfig.getValue("authToken").toString().toUtf8());
     requestOrder.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
     QNetworkReply* replyOrder = networkManager->get(requestOrder);
 
@@ -177,7 +195,44 @@ void OrderScreen::parseJsonResponse(const QByteArray &responseData) {
 
 }
 
-void OrderScreen::addNewTabWithOrderForm() {
+void OrderScreen::onSettlementClicked() {
+    QDate currentDate = QDate::currentDate();
+    QString startDateTime = currentDate.toString("yyyy-MM-dd") + "T00:00:00";
+    QString endDateTime   = currentDate.toString("yyyy-MM-dd") + "T23:59:59";
+
+    QString settlementUrl = settingConfig.getApiEndpoint("reports", "settlement");
+    QUrl url(settlementUrl);
+    QUrlQuery query;
+    query.addQueryItem("start", startDateTime);
+    query.addQueryItem("end", endDateTime);
+    url.setQuery(query);
+
+    QNetworkRequest request(url);
+    request.setRawHeader("Authorization", "Bearer " + settingConfig.getValue("authToken").toString().toUtf8());
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+
+    QNetworkReply* reply = networkManager->get(request);
+
+    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+        if (reply->error() == QNetworkReply::NoError) {
+            QByteArray responseData = reply->readAll();
+            qDebug() << "Settlement response:" << responseData;
+            QJsonDocument doc = QJsonDocument::fromJson(responseData);
+            QJsonObject settlementData = doc.object()["data"].toObject();
+
+            OrderPrint printer(settlementData);
+            printer.sendSettlementToReceiptPrinter();
+
+        } else {
+            qDebug() << "Settlement API error:" << reply->errorString();
+            QMessageBox::warning(this, "Settlement Error", "Failed to fetch settlement report.");
+        }
+        reply->deleteLater();
+    });
+}
+
+
+void OrderScreen::onOrderClicked() {
     OrderForm *newTab = new OrderForm(tabWidget);
     QString tabName = QString("New Order");
     int newTabIndex = tabWidget->addTab(newTab, tabName);

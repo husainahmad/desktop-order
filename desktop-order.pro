@@ -1,5 +1,5 @@
 QT       += core gui network
-
+QT       += printsupport
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 CONFIG += c++17
@@ -21,12 +21,14 @@ SOURCES += \
     orderitemsku.cpp \
     orderpaymentpopup.cpp \
     orderpopupwindow.cpp \
+    orderprint.cpp \
     orderscreen.cpp \
     ordersummary.cpp \
     ordertablewidget.cpp \
     product.cpp \
     productimage.cpp \
     productwidget.cpp \
+    setting.cpp \
     sku.cpp \
     skuwidget.cpp \
     splashscreen.cpp \
@@ -46,12 +48,14 @@ HEADERS += \
     orderitemsku.h \
     orderpaymentpopup.h \
     orderpopupwindow.h \
+    orderprint.h \
     orderscreen.h \
     ordersummary.h \
     ordertablewidget.h \
     product.h \
     productimage.h \
     productwidget.h \
+    setting.h \
     sku.h \
     skuwidget.h \
     splashscreen.h \
@@ -78,3 +82,11 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 
 RESOURCES += \
     resources.qrc
+
+DISTFILES += \
+    config/app.ini
+
+macx {
+    QMAKE_POST_LINK += cp $$PWD/config/app.ini $$OUT_PWD/config.app.ini
+}
+

@@ -7,12 +7,13 @@
 #include <QJsonArray>
 #include <QLocale>
 #include <QTimeZone>
-
+#include <QProcess>
+#include <orderprint.h>
 
 OrderPopupWindow::OrderPopupWindow(const QJsonObject &order, QWidget *parent)
-    : QDialog(parent) {
+    : QDialog(parent), orderDetails(order) {
     setWindowTitle("Order Details");
-    setFixedSize(600, 500);
+    setFixedSize(800, 700);
 
     locale = QLocale::English;
 
@@ -31,15 +32,39 @@ OrderPopupWindow::OrderPopupWindow(const QJsonObject &order, QWidget *parent)
     double grandTotal = order.value("grandTotal").toDouble();
     QJsonArray orderDetails = order.value("orderDetails").toArray();
 
-    QString table = "<style>"
-                    "body, html { width: 100%; margin: 0; padding: 0; }"
-                    ".container { width: 100%; padding: 10px; box-sizing: border-box; }"
-                    "table { width: 100%; border-collapse: collapse; border: 1px solid #ddd; }"
-                    "th, td { border: 1px solid #ddd; padding: 12px; text-align: left; font-size: 14px; }"
-                    "th { background-color: #4CAF50; color: white; }"
-                    "tr:nth-child(even) { background-color: #f9f9f9; }"
-                    "td:last-child, td:nth-child(3), td:nth-child(4) { text-align: right; }"
-                    "</style>";
+    QString table = R"(
+        <style>
+            .scroll-container {
+                width: 100%;
+                overflow-x: auto;
+            }
+            table {
+                width: 100%;
+                min-width: 700px; /* ensures wide tables */
+                border-collapse: collapse;
+                border: 1px solid #ddd;
+            }
+            th, td {
+                border: 1px solid #ddd;
+                padding: 12px;
+                text-align: left;
+                font-size: 14px;
+                white-space: nowrap; /* prevent text from wrapping */
+            }
+            th {
+                background-color: #4CAF50;
+                color: white;
+            }
+            tr:nth-child(even) {
+                background-color: #f9f9f9;
+            }
+            td:last-child, td:nth-child(3), td:nth-child(4) {
+                text-align: right;
+            }
+        </style>
+        <div class='scroll-container'>
+    )";
+
 
     // Extract order metadata
     QString orderNo = order.value("orderNo").toString();
@@ -70,7 +95,7 @@ OrderPopupWindow::OrderPopupWindow(const QJsonObject &order, QWidget *parent)
              "<p style='margin-top: 10px; font-size: 14px; color: #666;'><strong>Remark:</strong> " + remark + "</p>"
                         "</div>";
 
-    table += "<table>"
+    table += "<table width=100%>"
              "<tr>"
              "<th>Product Name</th>"
              "<th>SKU</th>"
@@ -114,27 +139,68 @@ OrderPopupWindow::OrderPopupWindow(const QJsonObject &order, QWidget *parent)
              "<td style='text-align: right; font-size: 16px; font-weight: bold; color: #4CAF50;'>Rp "
              + locale.toString(grandTotal, 'f', 0) + "</td></tr>";
 
-    table += "</table>";
+    table += "</table></div>";
 
     htmlViewer->setHtml(table);
     layout->addWidget(htmlViewer);
 
+    // Common style for bigger buttons
+    QString buttonStyle = R"(
+        QPushButton {
+            font-size: 16px;
+            padding: 12px 20px;
+            min-height: 20px;
+            min-width: 120px;
+            background-color: #007bff;
+            color: white;
+            border-radius: 6px;
+        }
+        QPushButton:hover {
+            background-color: #0056b3;
+        }
+        QPushButton:pressed {
+            background-color: #004494;
+        }
+    )";
+
+    // Button layout - horizontal
+    QHBoxLayout *buttonLayout = new QHBoxLayout;
+
     // Print button
     printButton = new QPushButton("Print", this);
+    printButton->setStyleSheet(buttonStyle);
     connect(printButton, &QPushButton::clicked, this, &OrderPopupWindow::printOrder);
-    layout->addWidget(printButton);
+    buttonLayout->addWidget(printButton);
+
+    // Kitchen Print button
+    printKitchenButton = new QPushButton("Kitchen Print", this);
+    printKitchenButton->setStyleSheet(buttonStyle);
+    connect(printKitchenButton, &QPushButton::clicked, this, &OrderPopupWindow::kitchenPrintOrder);
+    buttonLayout->addWidget(printKitchenButton);
 
     // Close button
     closeButton = new QPushButton("Close", this);
+    closeButton->setStyleSheet(buttonStyle);
     connect(closeButton, &QPushButton::clicked, this, &OrderPopupWindow::closeWindow);
-    layout->addWidget(closeButton);
+    buttonLayout->addWidget(closeButton);
+
+    // Add the horizontal button layout to the main vertical layout
+    layout->addLayout(buttonLayout);
+
 }
 
 OrderPopupWindow::~OrderPopupWindow() {
     // Qt handles child widget cleanup automatically
 }
+
 void OrderPopupWindow::printOrder() {
-    // TODO
+    OrderPrint printer(orderDetails);
+    printer.sendToReceiptPrinter();
+}
+
+void OrderPopupWindow::kitchenPrintOrder() {
+    OrderPrint printer(orderDetails);
+    printer.sendToKitchenPrinter();
 }
 
 void OrderPopupWindow::closeWindow() {

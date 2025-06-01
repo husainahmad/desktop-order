@@ -96,7 +96,7 @@ void OrderCartWidget::orderCartSkuWidget(OrderItem &orderItem, QVBoxLayout *&sku
 }
 
 void OrderCartWidget::onIncreaseClicked(const OrderItem &orderItem, const OrderItemSku &orderItemSku) {
-    Product product(orderItem.productId, orderItem.productName);
+    Product product(orderItem.productId, orderItem.productName, orderItem.categoryId);
     Sku sku(orderItemSku.skuId, orderItemSku.skuName, orderItemSku.price);
 
     if (orderForm) {
@@ -107,7 +107,7 @@ void OrderCartWidget::onIncreaseClicked(const OrderItem &orderItem, const OrderI
 }
 
 void OrderCartWidget::onDecreaseClicked(const OrderItem &orderItem, const OrderItemSku &orderItemSku) {
-    Product product(orderItem.productId, orderItem.productName);
+    Product product(orderItem.productId, orderItem.productName, orderItem.categoryId);
     Sku sku(orderItemSku.skuId, orderItemSku.skuName, orderItemSku.price);
     if (orderForm) {
         emit orderForm->updateQuantity(product, sku, false);

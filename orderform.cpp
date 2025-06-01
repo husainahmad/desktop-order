@@ -29,6 +29,8 @@
 #include <QMessageBox>
 #include <toast.h>
 #include <orderpaymentpopup.h>
+#include <QProcess>
+#include <orderprint.h>
 
 OrderForm::OrderForm(QTabWidget *tabWidget, QWidget *parent)
     : QWidget(parent), ui(new Ui::OrderForm), tabWidget(tabWidget), networkManager(new QNetworkAccessManager(this)), order()
@@ -200,12 +202,13 @@ OrderForm::OrderForm(QTabWidget *tabWidget, QWidget *parent)
     connect(this, &OrderForm::updateQuantity, this, &OrderForm::updateOrderData);
     connect(confirmButton, &QPushButton::clicked, this, &OrderForm::onConfirmButtonClicked);
     connect(discountText, &QLineEdit::textChanged, this, &OrderForm::populateOrderOnRightPanel);
-
+    connect(printButton, &QPushButton::clicked, this, &OrderForm::printReceipt);
 }
 
 void OrderForm::fetchDataFromAPI() {
-    QNetworkRequest requestCategory(QUrl(QString("http://localhost:8080/api/v1/category/tier")));
-    requestCategory.setRawHeader("Authorization", "Bearer " + settings.value("authToken").toString().toUtf8());
+
+    QNetworkRequest requestCategory(QUrl(settingConfig.getApiEndpoint("menu", "category") + "/tier"));
+    requestCategory.setRawHeader("Authorization", "Bearer " + settingConfig.getValue("authToken").toString().toUtf8());
     requestCategory.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
     QNetworkReply* replyCategory = networkManager->get(requestCategory);
 
@@ -215,8 +218,8 @@ void OrderForm::fetchDataFromAPI() {
 }
 
 void OrderForm::fetchDataDetailProduct(QString id) {
-    QNetworkRequest requestDetailProduct(QUrl(QString("http://localhost:8080/api/v1/product/category/%1/price").arg(id)));
-    requestDetailProduct.setRawHeader("Authorization", "Bearer " + settings.value("authToken").toString().toUtf8());
+    QNetworkRequest requestDetailProduct(QUrl(QString(settingConfig.getApiEndpoint("menu","product") + "/category/%1/price").arg(id)));
+    requestDetailProduct.setRawHeader("Authorization", "Bearer " + settingConfig.getValue("authToken").toString().toUtf8());
     requestDetailProduct.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
     QNetworkReply* replyDetailProduct = networkManager->get(requestDetailProduct);
 
@@ -335,7 +338,7 @@ void OrderForm::updateProductLeftTopPanel(const QJsonArray &dataArray) {
         QJsonObject item = value.toObject();
         QString name = item["name"].toString();
         int id = item["id"].toInt();
-
+        int categoryId = item["categoryId"].toInt();
         QString imagePath = ":/assets/images/pizza.png";
         QJsonObject imageItem = item["productImage"].toObject();
 
@@ -346,7 +349,7 @@ void OrderForm::updateProductLeftTopPanel(const QJsonArray &dataArray) {
             imageItem["mimeType"].toString()
             );
 
-        Product product(id, name, imagePath, getSkuFromItem(item), productImage);
+        Product product(id, name, categoryId, imagePath, getSkuFromItem(item), productImage);
 
         products.append(product);
 
@@ -361,6 +364,52 @@ void OrderForm::updateProductLeftTopPanel(const QJsonArray &dataArray) {
             row++;
         }
     }
+}
+
+void OrderForm::printReceipt() {
+
+    QJsonObject jsonObject;
+
+    // Add basic order fields
+    jsonObject["id"] = order.id;
+    jsonObject["customerId"] = order.customerId;
+    jsonObject["customerName"] = customerNameText->text();
+    jsonObject["remark"] = remarkText->toPlainText();
+    jsonObject["subTotal"] = order.subTotal;
+    jsonObject["subTotalTax"] = order.subTotalTax;
+    jsonObject["subTotalDiscount"] = order.subTotalDiscount;
+    jsonObject["grandTotal"] = order.grandTotal;
+
+    // Prepare orderItems array
+    QJsonArray orderItemsArray;
+
+    for (const OrderItem &item : order.orderItems) {
+        QJsonObject itemObj;
+        itemObj["productName"] = item.productName;
+        itemObj["categoryId"] = item.categoryId;
+
+        QJsonArray skusArray;
+        for (const OrderItemSku &sku : item.orderItemSkus) {
+            QJsonObject skuObj;
+            skuObj["quantity"] = sku.quantity;
+            skuObj["skuName"] = sku.skuName;
+            skuObj["subTotal"] = sku.subTotal;
+            skuObj["price"] = sku.price;
+
+            // Add more fields from SKU if needed
+            skusArray.append(skuObj);
+        }
+
+        itemObj["orderDetailSkus"] = skusArray;
+        orderItemsArray.append(itemObj);
+    }
+
+    // Add orderItems array to jsonObject
+    jsonObject["orderDetails"] = orderItemsArray;
+
+
+    OrderPrint printer(jsonObject);
+    printer.sendToKitchenPrinter();
 }
 
 QList<Sku> OrderForm::getSkuFromItem(const QJsonObject &object) {
@@ -398,6 +447,7 @@ void OrderForm::onConfirmButtonClicked() {
         QJsonObject orderItemObj;
         orderItemObj["productId"] = orderItem.productId;
         orderItemObj["productName"] = orderItem.productName;
+        orderItemObj["categoryId"] = orderItem.categoryId;
 
         QJsonArray skusArray;
         for (const OrderItemSku &sku : orderItem.orderItemSkus) {
@@ -424,9 +474,8 @@ void OrderForm::onConfirmButtonClicked() {
     QJsonDocument jsonDoc(orderData);
     QByteArray jsonData = jsonDoc.toJson();
 
-    // Send order to API
-    QNetworkRequest request(QUrl("http://localhost:8088/api/v1/order"));
-    request.setRawHeader("Authorization", "Bearer " + settings.value("authToken").toString().toUtf8());
+    QNetworkRequest request(QUrl(settingConfig.getApiEndpoint("order","confirm")));
+    request.setRawHeader("Authorization", "Bearer " + settingConfig.getValue("authToken").toString().toUtf8());
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
 
     QNetworkReply *reply = networkManager->post(request, jsonData);
@@ -519,7 +568,7 @@ void OrderForm::removeSku(const int &productId, const Sku &sku) {
                     std::remove_if(orderItem.orderItemSkus.begin(), orderItem.orderItemSkus.end(),
                                    [&sku](const OrderItemSku &dsku) {
                                        return dsku.skuId == sku.id;
-                    }),
+                                   }),
                     orderItem.orderItemSkus.end());
             } else {
                 isRemoveItem = true; // Mark for deletion
@@ -556,7 +605,7 @@ void OrderForm::updateOrderData(const Product &product, const Sku &sku,
     if (order.orderItems.isEmpty() || !found) {
         OrderItemSku orderItemSku(sku.id, sku.name, 1, sku.price, sku.price*1);
         orderItemSkus.append(orderItemSku);
-        OrderItem orderItem(product.id, product.name, orderItemSkus);
+        OrderItem orderItem(product.id, product.name, product.categoryId, orderItemSkus);
         order.orderItems.append(orderItem);
     }
 

@@ -7,6 +7,7 @@
 #include <QTabWidget>
 #include <QNetworkAccessManager>
 #include <QSettings>
+#include "setting.h"
 
 class QRadioButton;
 class QLineEdit;
@@ -40,8 +41,7 @@ private:
     QLabel *cashAmountLabel;
     double totalOrder;
     QTabWidget *tabWidget;
-    QSettings settings;
-
+    Setting configSetting;
 };
 
 #endif // ORDERPAYMENTPOPUP_H

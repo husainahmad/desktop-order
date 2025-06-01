@@ -10,9 +10,8 @@
 #include <QFormLayout>
 #include <QListWidget>
 #include <QNetworkAccessManager>
-#include <QSettings>
 #include <QLabel>
-
+#include "setting.h"
 namespace Ui {
 class OrderScreen;
 }
@@ -29,13 +28,13 @@ protected:
     void closeEvent(QCloseEvent *event) override;
 
 private slots:
-    void addNewTabWithOrderForm();
+    void onOrderClicked();
     void addProductToList();
     void fetchDataFromAPI();
     void parseJsonResponse(const QByteArray &responseData);
     void onTabChanged(int index);
     void onDateChanged(const QDate &selectedDate);
-
+    void onSettlementClicked();
 private:
     Ui::OrderScreen *ui;
     QTabWidget *tabWidget;
@@ -65,7 +64,7 @@ private:
     QWidget *ordersWidget;
 
     QNetworkAccessManager *networkManager;
-    QSettings settings;
+    Setting settingConfig;
     QLocale locale;
 };
 

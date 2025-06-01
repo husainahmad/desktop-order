@@ -5,6 +5,7 @@
 #include "orderitem.h"
 #include <QVBoxLayout>
 #include "orderform.h"
+#include "setting.h"
 
 namespace Ui {
 class OrderCartWidget;
@@ -28,6 +29,7 @@ private:
     OrderForm *orderForm;
     double subTotal;
     QLocale locale;
+    Setting settingConfig;
 };
 
 #endif // ORDERCARTWIDGET_H

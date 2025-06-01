@@ -15,11 +15,13 @@
 #include <QJsonArray>
 #include <QDoubleValidator>
 #include <QRegularExpression>
+#include <QUrl>
+#include <orderprint.h>
 
 OrderPaymentPopup::OrderPaymentPopup(const QJsonObject &order, QTabWidget *tabWidget, QWidget *parent)
     : QDialog(parent), networkManager(new QNetworkAccessManager(this)), orderDetails(order), tabWidget(tabWidget) {
     setWindowTitle("Select Payment Method");
-    setFixedSize(650, 550);
+    setFixedSize(750, 650);
     setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::CustomizeWindowHint);
 
     locale = QLocale::English;
@@ -32,20 +34,42 @@ OrderPaymentPopup::OrderPaymentPopup(const QJsonObject &order, QTabWidget *tabWi
     totalOrder = grandTotal;
 
     QJsonArray orderDetails = order.value("orderDetails").toArray();
-
-    QString table = "<style>"
-                    "body { margin: 0; padding: 0; font-family: Arial, sans-serif; }"
-                    ".container { width: 100%; padding: 10px; box-sizing: border-box; }"
-                    "table { width: 100%; border-collapse: collapse; }"
-                    "th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }"
-                    "th { background-color: #4CAF50; color: white; font-size: 14px; }"
-                    "tr:nth-child(even) { background-color: #f2f2f2; }"
-                    "td:last-child { font-weight: bold; text-align: right; }"
-                    "</style>";
+    QString table = R"(
+        <style>
+            .scroll-container {
+                width: 100%;
+                overflow-x: auto;
+            }
+            table {
+                width: 100%;
+                min-width: 700px; /* ensures wide tables */
+                border-collapse: collapse;
+                border: 1px solid #ddd;
+            }
+            th, td {
+                border: 1px solid #ddd;
+                padding: 12px;
+                text-align: left;
+                font-size: 14px;
+                white-space: nowrap; /* prevent text from wrapping */
+            }
+            th {
+                background-color: #4CAF50;
+                color: white;
+            }
+            tr:nth-child(even) {
+                background-color: #f9f9f9;
+            }
+            td:last-child, td:nth-child(3), td:nth-child(4) {
+                text-align: right;
+            }
+        </style>
+        <div class='scroll-container'>
+    )";
 
     // Header section
 
-    table += "<table>"
+    table += "<table width=100%>"
              "<tr>"
              "<th>Product Name</th>"
              "<th>SKU</th>"
@@ -65,8 +89,8 @@ OrderPaymentPopup::OrderPaymentPopup(const QJsonObject &order, QTabWidget *tabWi
             // Product Name (only for the first SKU)
             if (j == 0) {
                 table += "<td rowspan='" + QString::number(orderSKus.size()) + "'>"
-                                       "<strong>" + orderObj["productName"].toString() + "</strong>"
-                        "</td>";
+                                                                               "<strong>" + orderObj["productName"].toString() + "</strong>"
+                                                                "</td>";
             }
 
             // SKU, Quantity, Price, Amount
@@ -114,7 +138,7 @@ OrderPaymentPopup::OrderPaymentPopup(const QJsonObject &order, QTabWidget *tabWi
     cashAmountInput->setPlaceholderText("Enter cash amount...");
 
     QFont font;
-    font.setPointSize(16);
+    font.setPointSize(32);
     cashAmountInput->setFont(font);
     cashAmountInput->setStyleSheet("padding: 10px; font-size: 16px;");
 
@@ -135,8 +159,6 @@ OrderPaymentPopup::OrderPaymentPopup(const QJsonObject &order, QTabWidget *tabWi
 
     mainLayout->addLayout(cashLayout);
     cashLayout->setAlignment(Qt::AlignLeft);
-    cashAmountInput->setVisible(false);
-    cashAmountLabel->setVisible(false);
 
     // Connect radio button selection
     connect(qrPayment, &QRadioButton::toggled, this, &OrderPaymentPopup::updateUI);
@@ -146,12 +168,32 @@ OrderPaymentPopup::OrderPaymentPopup(const QJsonObject &order, QTabWidget *tabWi
     // 📌 Update label when user enters cash amount
     connect(cashAmountInput, &QLineEdit::textChanged, this, &OrderPaymentPopup::updateCashLabel);
 
+    // Common style for bigger buttons
+    QString buttonStyle = R"(
+        QPushButton {
+            font-size: 16px;
+            padding: 12px 20px;
+            min-height: 20px;
+            min-width: 120px;
+            background-color: #007bff;
+            color: white;
+            border-radius: 6px;
+        }
+        QPushButton:hover {
+            background-color: #0056b3;
+        }
+        QPushButton:pressed {
+            background-color: #004494;
+        }
+    )";
+
     // Buttons
     QHBoxLayout *buttonLayout = new QHBoxLayout();
     payButton = new QPushButton("Pay", this);
+    payButton->setStyleSheet(buttonStyle);
     buttonLayout->addWidget(payButton);
-    mainLayout->addLayout(buttonLayout);
 
+    mainLayout->addLayout(buttonLayout);
     // Connect button signals
     connect(payButton, &QPushButton::clicked, this, &OrderPaymentPopup::processPayment);
 }
@@ -160,8 +202,8 @@ OrderPaymentPopup::~OrderPaymentPopup() {}
 
 void OrderPaymentPopup::updateUI() {
     // Show cash input only if cash payment is selected
-    cashAmountInput->setVisible(cashPayment->isChecked());
-    cashAmountLabel->setVisible(cashPayment->isChecked());
+    cashAmountInput->setEnabled(cashPayment->isChecked());
+    cashAmountLabel->setEnabled(cashPayment->isChecked());
 }
 
 void OrderPaymentPopup::updateCashLabel(const QString &text) {
@@ -198,8 +240,7 @@ void OrderPaymentPopup::processPayment() {
     } else if (cashPayment->isChecked()) {
         bool valid;
         cashAmountInput->setFocus();
-        QString numericText = cashAmountInput->text();
-        numericText.remove(QRegularExpression("[^0-9.]"));
+        QString numericText = cashAmountInput->text().remove(QRegularExpression("[^0-9.]"));
 
         double cashGiven = numericText.toDouble(&valid);
         double grandTotal = orderDetails["grandTotal"].toDouble();
@@ -221,9 +262,27 @@ void OrderPaymentPopup::processPayment() {
     QJsonDocument jsonDoc(orderData);
     QByteArray jsonData = jsonDoc.toJson();
 
+    // Load API URL
+    QString orderUrl = configSetting.getApiEndpoint("order", "payment");
+    QUrl url(orderUrl);
+
+    if (!url.isValid()) {
+        qDebug() << "Invalid URL from config.ini:" << orderUrl;
+        QMessageBox::warning(this, "Error", "Invalid API URL. Please check config.ini.");
+        return;
+    }
+
+    // Load auth token
+    QString authToken = configSetting.getValue("authToken").toString().trimmed();
+    if (authToken.isEmpty()) {
+        qDebug() << "Auth token is empty!";
+        QMessageBox::warning(this, "Error", "Authentication token is missing. Please log in.");
+        return;
+    }
+
     // Prepare API request
-    QNetworkRequest request(QUrl("http://localhost:8088/api/v1/order"));
-    request.setRawHeader("Authorization", "Bearer " + settings.value("authToken").toString().toUtf8());
+    QNetworkRequest request(url);
+    request.setRawHeader("Authorization", "Bearer " + authToken.toUtf8());
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
 
     QNetworkReply *reply = networkManager->put(request, jsonData);
@@ -232,14 +291,19 @@ void OrderPaymentPopup::processPayment() {
     connect(reply, &QNetworkReply::finished, this, [this, reply]() {
         if (reply->error() == QNetworkReply::NoError) {
             QByteArray responseData = reply->readAll();
+
             if (responseData.isEmpty()) {
                 qDebug() << "Empty response received!";
                 QMessageBox::warning(this, "Error", "No response from the server.");
+                reply->deleteLater();
                 return;
             }
 
             QJsonDocument jsonDoc = QJsonDocument::fromJson(responseData);
             QJsonObject jsonObj = jsonDoc.object();
+
+            OrderPrint orderPrinter(jsonObj["data"].toObject());
+            orderPrinter.sendToReceiptPrinter();
 
             qDebug() << "Order processed successfully!";
 
@@ -250,7 +314,6 @@ void OrderPaymentPopup::processPayment() {
 
             // Close the popup after successful payment
             this->accept();
-
         } else {
             qDebug() << "Order placement failed: " << reply->errorString();
             QMessageBox::warning(this, "Error", "Failed to process payment. Please try again.");
@@ -258,6 +321,6 @@ void OrderPaymentPopup::processPayment() {
 
         reply->deleteLater();
     });
-
 }
+
 

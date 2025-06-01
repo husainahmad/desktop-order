@@ -19,6 +19,7 @@
 #include "product.h"
 #include "order.h"
 #include <QLocale>
+#include "setting.h"
 
 namespace Ui {
 class OrderForm;
@@ -47,6 +48,7 @@ private slots:
     QList<Sku> getSkuFromItem(const QJsonObject &object);
     QWidget* createProductGroupWidget(const Product &product);
     void updateCurrentTabName(const QString &newName);
+    void printReceipt();
 private:
     Ui::OrderForm *ui;
     QTabWidget *tabWidget;
@@ -69,6 +71,7 @@ private:
     QLineEdit *totalText;
     void populateOrderOnRightPanel();
     QLocale locale;
+    Setting settingConfig;
 signals:
     void updateQuantity(const Product &product, const Sku &sku, const bool &add);
 };

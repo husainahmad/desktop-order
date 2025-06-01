@@ -5,6 +5,7 @@
 #include <QTextBrowser>
 #include <QJsonObject>
 #include <QLocale>
+#include "setting.h"
 
 class QTextBrowser;
 class QPushButton;
@@ -18,12 +19,17 @@ public:
 
 private slots:
     void printOrder();
+    void kitchenPrintOrder();
     void closeWindow();
 private:
     QTextBrowser *htmlViewer;
     QPushButton *printButton;
+    QPushButton *printKitchenButton;
     QPushButton *closeButton;
     QLocale locale;
+    QJsonObject orderDetails;
+    Setting configSetting;
+
 };
 
 #endif // ORDERPOPUPWINDOW_H

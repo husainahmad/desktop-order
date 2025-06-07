@@ -148,8 +148,14 @@ OrderPaymentPopup::OrderPaymentPopup(const QJsonObject &order, QTabWidget *tabWi
 
     // 📌 Non-editable text for formatting
     cashAmountLabel = new QLabel("Rp 0", this);
-    cashAmountLabel->setFont(font);
-    cashAmountLabel->setStyleSheet("border: 1px solid #ccc; background: #f9f9f9; padding: 10px; text-align: right;");
+    cashAmountLabel->setStyleSheet(
+        "border: 1px solid #ccc; "
+        "background: #f9f9f9; "
+        "padding: 10px; "
+        "text-align: right; "
+        "color: #333333; "  // Darker color
+        "font-weight: bold;"  // Make the font bold
+        );
 
     cashLayout->addWidget(cashAmountInput);
     cashLayout->addWidget(cashAmountLabel);
@@ -207,29 +213,27 @@ void OrderPaymentPopup::updateUI() {
 }
 
 void OrderPaymentPopup::updateCashLabel(const QString &text) {
-
+    // Remove commas for processing, but leave them in the input
     QString numericText = text;
-    numericText.remove(QRegularExpression("[^0-9.]"));
-
+    numericText.remove(QRegularExpression("[^0-9.]"));  // Remove non-numeric characters except the dot
 
     bool ok;
     double amount = numericText.toDouble(&ok);
     if (ok) {
-        QString formattedText = locale.toString(amount, 'f', 0);
 
-        // Prevent infinite loop by only updating if needed
-        if (formattedText != text) {
-            cashAmountInput->blockSignals(true);
-            cashAmountInput->setText(formattedText);
-            cashAmountInput->blockSignals(false);
-        }
-        cashAmountLabel->setText(QString("Rp %1").arg(locale.toString(totalOrder - amount, 'f', 0)));
+        // Update the label to show the remaining amount (Total - Amount Entered)
+        double remainingAmount = totalOrder - amount;
+        cashAmountLabel->setText(QString("Rp %1").arg(locale.toString(remainingAmount, 'f', 0)));  // Format the label with the correct currency
     } else {
+        // If invalid amount, reset the label to show zero
         cashAmountLabel->setText("Rp 0");
     }
 }
 
 void OrderPaymentPopup::processPayment() {
+
+    static QRegularExpression nonNumeric("[^0-9.]");
+
     // Default Payment ID (Cash)
     int paymentId = 1;
 
@@ -240,11 +244,13 @@ void OrderPaymentPopup::processPayment() {
     } else if (cashPayment->isChecked()) {
         bool valid;
         cashAmountInput->setFocus();
-        QString numericText = cashAmountInput->text().remove(QRegularExpression("[^0-9.]"));
+        QString numericText = cashAmountInput->text().remove(nonNumeric);
 
+        // Convert the cleaned-up string into a valid numeric value
         double cashGiven = numericText.toDouble(&valid);
         double grandTotal = orderDetails["grandTotal"].toDouble();
 
+        // Validate the cash entered
         if (!valid || cashGiven < grandTotal) {
             QMessageBox::warning(this, "Error", "Insufficient cash entered!");
             return;
@@ -254,7 +260,7 @@ void OrderPaymentPopup::processPayment() {
         return;
     }
 
-    // Prepare JSON order data
+    // Prepare JSON order data for payment
     QJsonObject orderData;
     orderData["orderId"] = orderDetails["id"].toInt();
     orderData["paymentId"] = paymentId;
@@ -262,7 +268,7 @@ void OrderPaymentPopup::processPayment() {
     QJsonDocument jsonDoc(orderData);
     QByteArray jsonData = jsonDoc.toJson();
 
-    // Load API URL
+    // API URL for order processing
     QString orderUrl = configSetting.getApiEndpoint("order", "payment");
     QUrl url(orderUrl);
 
@@ -272,7 +278,7 @@ void OrderPaymentPopup::processPayment() {
         return;
     }
 
-    // Load auth token
+    // Load authentication token
     QString authToken = configSetting.getValue("authToken").toString().trimmed();
     if (authToken.isEmpty()) {
         qDebug() << "Auth token is empty!";
@@ -280,7 +286,7 @@ void OrderPaymentPopup::processPayment() {
         return;
     }
 
-    // Prepare API request
+    // Prepare the API request
     QNetworkRequest request(url);
     request.setRawHeader("Authorization", "Bearer " + authToken.toUtf8());
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
@@ -307,7 +313,7 @@ void OrderPaymentPopup::processPayment() {
 
             qDebug() << "Order processed successfully!";
 
-            // Remove current tab (if applicable)
+            // Close the tab after successful payment
             if (this->tabWidget) {
                 this->tabWidget->removeTab(this->tabWidget->currentIndex());
             }
@@ -322,5 +328,6 @@ void OrderPaymentPopup::processPayment() {
         reply->deleteLater();
     });
 }
+
 
 

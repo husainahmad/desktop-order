@@ -46,6 +46,7 @@ SkuWidget::SkuWidget(Product product, OrderForm *orderForm, QWidget *parent)
         skuLayout->setAlignment(Qt::AlignCenter);
     }
 
+
     setLayout(skuLayout);
 }
 

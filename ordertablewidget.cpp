@@ -33,7 +33,7 @@ OrderTableWidget::OrderTableWidget(const QJsonArray &dataArray, QWidget *parent)
     mainLayout->setSpacing(0);
 
     QLabel *titleLabel = new QLabel("", this);
-    titleLabel->setStyleSheet("font-size: 15px; font-weight: bold; color: #333;");
+    titleLabel->setStyleSheet("font-size: 15px; color: white; font-weight: bold;");
     mainLayout->addWidget(titleLabel);
 
     QTableWidget *tableWidget = new QTableWidget(1, 9, this);

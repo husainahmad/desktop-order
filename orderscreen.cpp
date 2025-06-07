@@ -91,7 +91,7 @@ OrderScreen::OrderScreen(QWidget *parent)
     QPushButton *addOrderButton = new QPushButton("➕ Add Order", this);
     QPushButton *settlementButton = new QPushButton("💰 Settlement", this);
 
-    QSize buttonSize(200, 40);  // width, height
+    QSize buttonSize(200, 35);  // width, height
     addOrderButton->setMinimumSize(buttonSize);
     settlementButton->setMinimumSize(buttonSize);
 

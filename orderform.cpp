@@ -56,7 +56,7 @@ OrderForm::OrderForm(QTabWidget *tabWidget, QWidget *parent)
     connect(searchBox, &QLineEdit::textChanged, this, &OrderForm::filterProducts);
 
     QPushButton *searchButton = new QPushButton("Search", this);
-    searchButton->setFixedSize(90, 35);
+    searchButton->setFixedSize(90, 25);
     searchButton->setStyleSheet("background-color: #007bff; color: white; font-size: 14px; border-radius: 5px;");
 
     searchButton->setFixedSize(80, 40);
@@ -199,7 +199,6 @@ OrderForm::OrderForm(QTabWidget *tabWidget, QWidget *parent)
 
     fetchDataFromAPI();
 
-    connect(this, &OrderForm::updateQuantity, this, &OrderForm::updateOrderData);
     connect(confirmButton, &QPushButton::clicked, this, &OrderForm::onConfirmButtonClicked);
     connect(discountText, &QLineEdit::textChanged, this, &OrderForm::populateOrderOnRightPanel);
     connect(printButton, &QPushButton::clicked, this, &OrderForm::printReceipt);
@@ -434,8 +433,11 @@ QWidget* OrderForm::createProductGroupWidget(const Product &product) {
     productGroupLayout->setContentsMargins(0, 0, 0, 0);
     productGroupLayout->setSpacing(0);
 
+    SkuWidget *skuWidget = new SkuWidget(product, this);
+    connect(skuWidget, &SkuWidget::updateQuantity, this, &OrderForm::updateQuantity);
+
     productGroupLayout->addWidget(new ProductWidget(product, productGroupWidget), 3);
-    productGroupLayout->addWidget(new SkuWidget(product, this), 7);
+    productGroupLayout->addWidget(skuWidget, 7);
     productGroupWidget->setLayout(productGroupLayout);
 
     return productGroupWidget;
@@ -514,6 +516,10 @@ void OrderForm::populateOrderOnRightPanel() {
     double subTotal = 0;
     for (const OrderItem &orderItem: order.orderItems) {
         OrderCartWidget *orderCartItem = new OrderCartWidget(orderItem, this, cartItemWidget);
+        connect(orderCartItem, &OrderCartWidget::updateQuantity,
+                this, &OrderForm::updateQuantity); // connect to OrderForm's signal
+
+
         if (orderCartItem->getTotal()) {
             subTotal += (orderCartItem->getTotal());
         }
@@ -585,7 +591,6 @@ void OrderForm::removeSku(const int &productId, const Sku &sku) {
     populateOrderOnRightPanel();
 }
 
-
 void OrderForm::updateOrderData(const Product &product, const Sku &sku,
                                 const bool &add) {
     QList<OrderItemSku> orderItemSkus;
@@ -611,6 +616,13 @@ void OrderForm::updateOrderData(const Product &product, const Sku &sku,
 
     populateOrderOnRightPanel();
 }
+
+void OrderForm::updateQuantity(const Product &product, const Sku &sku, bool add) {
+    qDebug() << "Updating quantity for SKU:" << sku.name << "Add:" << add;
+    updateOrderData(product, sku, add);
+    populateOrderOnRightPanel(); // If this refreshes UI
+}
+
 
 void OrderForm::filterProducts(const QString &query) {
     QLayoutItem *child;

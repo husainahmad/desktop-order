@@ -21,9 +21,11 @@ public:
     double getTotal();
     ~OrderCartWidget();
 
+signals:
+    void updateQuantity(const Product &product, const Sku &sku, bool add);
+
 private slots:
-    void onIncreaseClicked(const OrderItem &orderItem, const OrderItemSku &orderItemSku);
-    void onDecreaseClicked(const OrderItem &orderItem, const OrderItemSku &orderItemSku);
+
 private:
     Ui::OrderCartWidget *ui;
     OrderForm *orderForm;

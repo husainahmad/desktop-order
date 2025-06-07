@@ -17,6 +17,8 @@ class SkuWidget : public QWidget
 public:
     explicit SkuWidget(Product product, OrderForm *orderForm, QWidget *parent = nullptr);
     ~SkuWidget();
+signals:
+    void updateQuantity(const Product &product, const Sku &sku, bool add);
 
 private:
     Ui::SkuWidget *ui;

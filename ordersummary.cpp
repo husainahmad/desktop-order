@@ -89,7 +89,7 @@ OrderSummary::OrderSummary(const QJsonArray &dataArray, QWidget *parent)
                           " | Total Amount : Rp. " + QLocale(QLocale::English).toString(grandTotal, 'f', 0);
 
     QLabel *titleLabel = new QLabel(titleString, this);
-    titleLabel->setStyleSheet("font-size: 15px; font-weight: bold; color: #333;");
+    titleLabel->setStyleSheet("font-size: 15px; font-weight: bold; color: white;");
     mainLayout->addWidget(titleLabel);
 
     // Step 4: Display Summary Table

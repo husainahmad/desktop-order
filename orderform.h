@@ -32,6 +32,10 @@ class OrderForm : public QWidget
 public:
     explicit OrderForm(QTabWidget *tabWidget, QWidget *parent = nullptr);
     ~OrderForm();
+    void updateOrderData(const Product &product, const Sku &sku, const bool &add);
+
+public slots:
+    void updateQuantity(const Product &product, const Sku &sku, bool add);
 
 private slots:
     void fetchDataFromAPI();
@@ -44,7 +48,7 @@ private slots:
     bool checkSku(const Sku &sku, const bool &add, OrderItem &orderItem);
     void removeSku(const int &productId, const Sku &sku);
     void onConfirmButtonClicked();
-    void updateOrderData(const Product &product, const Sku &sku, const bool &add);
+
     QList<Sku> getSkuFromItem(const QJsonObject &object);
     QWidget* createProductGroupWidget(const Product &product);
     void updateCurrentTabName(const QString &newName);
@@ -72,8 +76,6 @@ private:
     void populateOrderOnRightPanel();
     QLocale locale;
     Setting settingConfig;
-signals:
-    void updateQuantity(const Product &product, const Sku &sku, const bool &add);
 };
 
 #endif // ORDERFORM_H

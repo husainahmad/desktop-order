@@ -3,6 +3,8 @@
 
 #include <QJsonObject>
 #include "setting.h"
+#include <QString>
+#include <QByteArray>
 
 class OrderPrint
 {
@@ -11,7 +13,7 @@ public:
     void sendToReceiptPrinter();
     void sendToKitchenPrinter();
     void sendSettlementToReceiptPrinter();
-
+    bool sendRawDataToPrinter(const QString &printerName, const QByteArray &data);
 private slots:
 
 private:

@@ -10,9 +10,42 @@
 #include <QSplashScreen>
 #include <QTimer>
 
+
+static QTextStream *gLogStream = nullptr;
+
+void myMessageHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg)
+{
+    Q_UNUSED(type);
+    Q_UNUSED(context);
+
+    if (gLogStream) {
+        QString output = QString("[%1] %2\n")
+        .arg(QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss"))
+            .arg(msg);
+        *gLogStream << output;
+        gLogStream->flush();
+    }
+}
+
+
+void installLogger() {
+    QFile *logFile = new QFile("log.txt");
+    logFile->open(QIODevice::Append | QIODevice::Text);
+    gLogStream = new QTextStream(logFile);  // assign to global
+
+    qInstallMessageHandler(myMessageHandler);
+}
+
+
 int main(int argc, char *argv[])
 {
-    QApplication a(argc, argv);
+    QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
+    QApplication app(argc, argv);
+
+    installLogger(); // Enable file logging
+
+    qDebug() << "✅ Application started in release mode with debug log enabled";
+
 
     // Initialize splash screen with an image
     QPixmap pixmap(":/assets/images/splash.jpg");  // Ensure you have a valid image path
@@ -30,6 +63,6 @@ int main(int argc, char *argv[])
         splash.finish(loginScreen);
     });
 
-    return a.exec();
+    return app.exec();
 }
 

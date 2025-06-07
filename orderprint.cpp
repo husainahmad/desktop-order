@@ -7,6 +7,9 @@
 
 #include <QLocale>
 #include <QTimeZone>
+#ifdef Q_OS_WIN
+#include <windows.h>
+#endif
 
 OrderPrint::OrderPrint(const QJsonObject &order) : orderDetails(order) {
     locale = QLocale::English;
@@ -72,15 +75,23 @@ void OrderPrint::sendToReceiptPrinter() {
         receiptData.append("Note: " + note.toUtf8() + "\n");
     }
 
+    receiptData.append("Terima kasih\n");
     receiptData.append("\n\n\n");         // Add spacing
     receiptData.append("\x1D\x56\x01");   // Cut paper
 
-    // Send to printer
-    QProcess process;
-    process.start("lp", QStringList() << "-d" << settingConfig.getApiEndpoint("printer", "receipt") << "-o" << "raw");
-    process.write(receiptData);
-    process.closeWriteChannel();
-    process.waitForFinished();
+    #ifdef Q_OS_WIN
+        if (!sendRawDataToPrinter(settingConfig.getApiEndpoint("printer", "receipt"), receiptData)) {
+            qDebug() << "Failed to send data to printer on Windows.";
+        }
+    #else
+        // Send to printer
+        QProcess process;
+        process.start("lp", QStringList() << "-d" << settingConfig.getApiEndpoint("printer", "receipt") << "-o" << "raw");
+        process.write(receiptData);
+        process.closeWriteChannel();
+        process.waitForFinished();
+    #endif
+
 }
 
 void OrderPrint::sendToKitchenPrinter() {
@@ -146,12 +157,18 @@ void OrderPrint::sendToKitchenPrinter() {
         receiptData.append("\n\n\n");       // Spacing
         receiptData.append("\x1D\x56\x01"); // Cut paper
 
-        // Send to printer
-        QProcess process;
-        process.start("lp", QStringList() << "-d" << settingConfig.getApiEndpoint("printer", "kitchen") << "-o" << "raw");
-        process.write(receiptData);
-        process.closeWriteChannel();
-        process.waitForFinished();
+        #ifdef Q_OS_WIN
+                if (!sendRawDataToPrinter(settingConfig.getApiEndpoint("printer", "kitchen"), receiptData)) {
+                    qDebug() << "Failed to send data to printer on Windows.";
+                }
+        #else
+                // Send to printer
+                QProcess process;
+                process.start("lp", QStringList() << "-d" << settingConfig.getApiEndpoint("printer", "kitchen") << "-o" << "raw");
+                process.write(receiptData);
+                process.closeWriteChannel();
+                process.waitForFinished();
+        #endif
     }
 }
 
@@ -196,10 +213,61 @@ void OrderPrint::sendSettlementToReceiptPrinter() {
     receiptData.append("\n\n\n");
     receiptData.append("\x1D\x56\x01"); // Cut paper
 
+    #ifdef Q_OS_WIN
+        if (!sendRawDataToPrinter(settingConfig.getApiEndpoint("printer", "receipt"), receiptData)) {
+            qDebug() << "Failed to send data to printer on Windows.";
+        }
+    #else
     // Send to printer
-    QProcess process;
-    process.start("lp", QStringList() << "-d" << settingConfig.getApiEndpoint("printer", "receipt") << "-o" << "raw");
-    process.write(receiptData);
-    process.closeWriteChannel();
-    process.waitForFinished();
+        QProcess process;
+        process.start("lp", QStringList() << "-d" << settingConfig.getApiEndpoint("printer", "receipt") << "-o" << "raw");
+        process.write(receiptData);
+        process.closeWriteChannel();
+        process.waitForFinished();
+    #endif
 }
+
+#ifdef Q_OS_WIN
+bool OrderPrint::sendRawDataToPrinter(const QString &printerName, const QByteArray &data) {
+    HANDLE hPrinter;
+    DOC_INFO_1A docInfo;
+    DWORD bytesWritten;
+
+    if (!OpenPrinterA((LPSTR)printerName.toUtf8().constData(), &hPrinter, nullptr)) {
+        qDebug() << "Failed to open printer:" << printerName;
+        return false;
+    }
+
+    docInfo.pDocName = (LPSTR)"POS Print Job";
+    docInfo.pOutputFile = nullptr;
+    docInfo.pDatatype = (LPSTR)"RAW";
+
+    if (StartDocPrinterA(hPrinter, 1, (LPBYTE)&docInfo) == 0) {
+        ClosePrinter(hPrinter);
+        qDebug() << "StartDocPrinter failed";
+        return false;
+    }
+
+    if (!StartPagePrinter(hPrinter)) {
+        EndDocPrinter(hPrinter);
+        ClosePrinter(hPrinter);
+        qDebug() << "StartPagePrinter failed";
+        return false;
+    }
+
+    if (!WritePrinter(hPrinter, (LPVOID)data.constData(), static_cast<DWORD>(data.size()), &bytesWritten)) {
+        qDebug() << "WritePrinter failed";
+        EndPagePrinter(hPrinter);
+        EndDocPrinter(hPrinter);
+        ClosePrinter(hPrinter);
+        return false;
+    }
+
+    EndPagePrinter(hPrinter);
+    EndDocPrinter(hPrinter);
+    ClosePrinter(hPrinter);
+
+    return true;
+}
+#endif
+

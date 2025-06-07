@@ -30,7 +30,6 @@ OrderCartWidget::OrderCartWidget(OrderItem orderItem, OrderForm *orderForm, QWid
     layout->addWidget(productNameLabel, 3);
     layout->addLayout(skuLayout, 7);
 
-
     setLayout(layout);
 }
 
@@ -71,13 +70,26 @@ void OrderCartWidget::orderCartSkuWidget(OrderItem &orderItem, QVBoxLayout *&sku
         minusButton->setStyleSheet(buttonStyle);
         plusButton->setStyleSheet(buttonStyle);
 
-        // Fix lambda parameter copying issue (Pass by Reference)
-        connect(plusButton, &QPushButton::clicked, this, [this, orderItem, orderItemSku]() {
-            onIncreaseClicked(orderItem, orderItemSku);
+        int productId = orderItem.productId;
+        QString productName = orderItem.productName;
+        int categoryId = orderItem.categoryId;
+
+        int skuId = orderItemSku.skuId;
+        QString skuName = orderItemSku.skuName;
+        double price = orderItemSku.price;
+
+        connect(plusButton, &QPushButton::clicked, this, [=]() {
+            Product product(productId, productName, categoryId);
+            Sku sku(skuId, skuName, price);
+            //orderForm->updateQuantity(product, sku, true);
+            emit updateQuantity(product, sku, true);
         });
 
-        connect(minusButton, &QPushButton::clicked, this, [this, orderItem, orderItemSku]() {
-            onDecreaseClicked(orderItem, orderItemSku);
+        connect(minusButton, &QPushButton::clicked, this, [=]() {
+            Product product(productId, productName, categoryId);
+            Sku sku(skuId, skuName, price);
+            //orderForm->updateQuantity(product, sku, false);
+            emit updateQuantity(product, sku, false);
         });
 
         subTotal += orderItemSku.subTotal;
@@ -90,27 +102,6 @@ void OrderCartWidget::orderCartSkuWidget(OrderItem &orderItem, QVBoxLayout *&sku
         buttonLayout->addWidget(plusButton, 0, Qt::AlignCenter);
 
         skuLayout->addLayout(buttonLayout);
-    }
-}
-
-void OrderCartWidget::onIncreaseClicked(const OrderItem &orderItem, const OrderItemSku &orderItemSku) {
-    Product product(orderItem.productId, orderItem.productName, orderItem.categoryId);
-    Sku sku(orderItemSku.skuId, orderItemSku.skuName, orderItemSku.price);
-
-    if (orderForm) {
-        emit orderForm->updateQuantity(product, sku, true);
-    } else {
-        qDebug() << "Error: orderForm is nullptr!";
-    }
-}
-
-void OrderCartWidget::onDecreaseClicked(const OrderItem &orderItem, const OrderItemSku &orderItemSku) {
-    Product product(orderItem.productId, orderItem.productName, orderItem.categoryId);
-    Sku sku(orderItemSku.skuId, orderItemSku.skuName, orderItemSku.price);
-    if (orderForm) {
-        emit orderForm->updateQuantity(product, sku, false);
-    } else {
-        qDebug() << "Error: orderForm is nullptr!";
     }
 }
 

@@ -83,10 +83,21 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 RESOURCES += \
     resources.qrc
 
+release {
+    DEFINES -= QT_NO_DEBUG_OUTPUT
+}
+
 DISTFILES += \
     config/app.ini
 
 macx {
     QMAKE_POST_LINK += cp $$PWD/config/app.ini $$OUT_PWD/config.app.ini
 }
+
+# Windows: copy app.ini after build
+win32 {
+    QMAKE_POST_LINK += copy /Y \"$$PWD\\config\\app.ini\" \"$$OUT_PWD\\config.app.ini\"
+}
+
+win32:LIBS += -lwinspool
 

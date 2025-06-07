@@ -44,17 +44,6 @@ void OrderPrint::sendToReceiptPrinter() {
         QString productName = itemObj["productName"].toString();
         QJsonArray skus = itemObj["orderDetailSkus"].toArray();
 
-        double totalQty = 0;
-        double totalPrice = 0;
-
-        for (const QJsonValue &skuVal : skus) {
-            QJsonObject skuObj = skuVal.toObject();
-            double qty = skuObj["quantity"].toDouble();
-            double price = skuObj["price"].toDouble(); // Ensure this exists
-            totalQty += qty;
-            totalPrice += skuObj["amount"].toDouble();
-        }
-
         QString line = QString("%1\n")
                            .arg(productName.leftJustified(15));
         receiptData.append(line.toUtf8());
@@ -63,7 +52,6 @@ void OrderPrint::sendToReceiptPrinter() {
             QJsonObject skuObj = skuVal.toObject();
             QString skuName = skuObj["skuName"].toString();
             double qty = skuObj["quantity"].toDouble();
-            double price = skuObj["price"].toDouble();
             double lineTotal = skuObj["amount"].toDouble();
 
             QString skuLine = QString("  - %1%2%3\n")
@@ -132,12 +120,7 @@ void OrderPrint::sendToKitchenPrinter() {
         for (const QJsonObject &itemObj : items) {
             QString productName = itemObj["productName"].toString();
             QJsonArray skus = itemObj["orderDetailSkus"].toArray();
-
-            double totalQty = 0;
-            for (const QJsonValue &skuVal : skus) {
-                totalQty += skuVal.toObject()["quantity"].toDouble();
-            }
-
+;
             // Print product line
             QString line = QString("%1\n")
                                .arg(productName.leftJustified(18));

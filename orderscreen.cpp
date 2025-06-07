@@ -91,14 +91,14 @@ OrderScreen::OrderScreen(QWidget *parent)
     QPushButton *addOrderButton = new QPushButton("➕ Add Order", this);
     QPushButton *settlementButton = new QPushButton("💰 Settlement", this);
 
-    QSize buttonSize(200, 50);  // width, height
+    QSize buttonSize(200, 40);  // width, height
     addOrderButton->setMinimumSize(buttonSize);
     settlementButton->setMinimumSize(buttonSize);
 
     // Style the buttons
     QString buttonStyle = "QPushButton {"
                           "background-color: #4CAF50; color: white;"
-                          "border-radius: 10px; padding: 15px; font-size: 18px;"
+                          "border-radius: 10px; padding: 10px; font-size: 18px;"
                           "border: 2px solid #388E3C;"
                           "}"
                           "QPushButton:hover {"

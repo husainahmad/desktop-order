@@ -51,8 +51,6 @@ void OrderCartWidget::orderCartSkuWidget(OrderItem &orderItem, QVBoxLayout *&sku
         QPushButton *plusButton = new QPushButton("+", this);
         QLabel *totalLabel = new QLabel(locale.toString(orderItemSku.quantity), this);
 
-        minusButton->setFixedSize(40, 40);
-        plusButton->setFixedSize(40, 40);
         totalLabel->setFixedSize(30, 40);
         totalLabel->setAlignment(Qt::AlignCenter);
         totalLabel->setStyleSheet("font-size: 14px; font-weight: bold;");
@@ -62,10 +60,10 @@ void OrderCartWidget::orderCartSkuWidget(OrderItem &orderItem, QVBoxLayout *&sku
             "QPushButton {"
             "   background-color: #007bff;"
             "   color: white;"
-            "   font-size: 18px;"
+            "   font-size: 16px;"
             "   border-radius: 10px;"
-            "   width: 40px;"
-            "   height: 40px;"
+            "   width: 30px;"
+            "   height: 30px;"
             "}"
             "QPushButton:hover { background-color: #0056b3; }"
             "QPushButton:pressed { background-color: #004494; }";

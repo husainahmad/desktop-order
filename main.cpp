@@ -9,7 +9,6 @@
 #include <QApplication>
 #include <QSplashScreen>
 #include <QTimer>
-#include "LoginScreen.h"
 
 int main(int argc, char *argv[])
 {

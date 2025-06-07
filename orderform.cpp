@@ -260,7 +260,7 @@ void OrderForm::updateCategoryLeftPanel(const QJsonArray &dataArray) {
     const int maxColumns = 5;  // 🔢 Define grid layout columns
     QString firstCatId;
     const int buttonWidth = 140;
-    const int buttonHeight = 75;
+    const int buttonHeight = 40;
 
     for (const QJsonValue &value : dataArray) {
         QJsonObject item = value.toObject();

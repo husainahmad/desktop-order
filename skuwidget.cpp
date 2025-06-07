@@ -19,7 +19,7 @@ SkuWidget::SkuWidget(Product product, OrderForm *orderForm, QWidget *parent)
     skuLayout->setSpacing(10);
     skuLayout->setAlignment(Qt::AlignCenter);
     for (const Sku &sku: product.skus) {
-        QString buttonString = "Add " + sku.name;
+        QString buttonString = sku.name;
         QPushButton *addButton = new QPushButton(buttonString);
         addButton->setStyleSheet(
             "QPushButton {"
@@ -27,8 +27,8 @@ SkuWidget::SkuWidget(Product product, OrderForm *orderForm, QWidget *parent)
             "   color: white;"
             "   font-size: 14px;"
             "   font-weight: bold;"
-            "   border-radius: 8px;"
-            "   padding: 8px 16px;"
+            "   border-radius: 6px;"
+            "   padding: 8px 10px;"
             "}"
             "QPushButton:hover {"
             "   background-color: #218838;"  // Darker green on hover
@@ -38,7 +38,7 @@ SkuWidget::SkuWidget(Product product, OrderForm *orderForm, QWidget *parent)
             "}"
             );
 
-        addButton->setFixedSize(150, 40);
+        addButton->setFixedSize(100, 30);
         connect(addButton, &QPushButton::clicked, this, [orderForm, product, sku]() {
             emit orderForm->updateQuantity(product, sku, true);
         });

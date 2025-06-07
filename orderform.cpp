@@ -370,19 +370,19 @@ void OrderForm::printReceipt() {
     QJsonObject jsonObject;
 
     // Add basic order fields
-    jsonObject["id"] = order.id;
-    jsonObject["customerId"] = order.customerId;
+    jsonObject["id"] = order->id;
+    jsonObject["customerId"] = order->customerId;
     jsonObject["customerName"] = customerNameText->text();
     jsonObject["remark"] = remarkText->toPlainText();
-    jsonObject["subTotal"] = order.subTotal;
-    jsonObject["subTotalTax"] = order.subTotalTax;
-    jsonObject["subTotalDiscount"] = order.subTotalDiscount;
-    jsonObject["grandTotal"] = order.grandTotal;
+    jsonObject["subTotal"] = order->subTotal;
+    jsonObject["subTotalTax"] = order->subTotalTax;
+    jsonObject["subTotalDiscount"] = order->subTotalDiscount;
+    jsonObject["grandTotal"] = order->grandTotal;
 
     // Prepare orderItems array
     QJsonArray orderItemsArray;
 
-    for (const OrderItem &item : order.orderItems) {
+    for (const OrderItem &item : order->orderItems) {
         QJsonObject itemObj;
         itemObj["productName"] = item.productName;
         itemObj["categoryId"] = item.categoryId;
@@ -434,10 +434,17 @@ QWidget* OrderForm::createProductGroupWidget(const Product &product) {
     productGroupLayout->setSpacing(0);
 
     SkuWidget *skuWidget = new SkuWidget(product, this);
-    connect(skuWidget, &SkuWidget::updateQuantity, this, &OrderForm::updateQuantity);
+
 
     productGroupLayout->addWidget(new ProductWidget(product, productGroupWidget), 3);
     productGroupLayout->addWidget(skuWidget, 7);
+
+    bool ok = connect(skuWidget, &SkuWidget::updateQuantity,
+                      this, &OrderForm::updateQuantity);
+
+    qDebug() << "Signal connected?" << ok;
+    qDebug() << "Signal connected Product?" << product.name;
+
     productGroupWidget->setLayout(productGroupLayout);
 
     return productGroupWidget;
@@ -445,7 +452,7 @@ QWidget* OrderForm::createProductGroupWidget(const Product &product) {
 
 void OrderForm::onConfirmButtonClicked() {
     QJsonArray orderItemsArray;
-    for (const OrderItem &orderItem : order.orderItems) {
+    for (const OrderItem &orderItem : order->orderItems) {
         QJsonObject orderItemObj;
         orderItemObj["productId"] = orderItem.productId;
         orderItemObj["productName"] = orderItem.productName;
@@ -513,17 +520,24 @@ void OrderForm::populateOrderOnRightPanel() {
         delete child;
     }
 
-    double subTotal = 0;
-    for (const OrderItem &orderItem: order.orderItems) {
-        OrderCartWidget *orderCartItem = new OrderCartWidget(orderItem, this, cartItemWidget);
-        connect(orderCartItem, &OrderCartWidget::updateQuantity,
-                this, &OrderForm::updateQuantity); // connect to OrderForm's signal
+    qDebug() << "populateOrderOnRightPanel total items : " << order->orderItems.size();
 
+    double subTotal = 0;
+    for (const OrderItem &orderItem: order->orderItems) {
+        OrderCartWidget *orderCartItem = new OrderCartWidget(orderItem, this, cartItemWidget);
+
+        qDebug() << "populateOrderOnRightPanel Item : " << orderItem.productName;
 
         if (orderCartItem->getTotal()) {
             subTotal += (orderCartItem->getTotal());
         }
         cartLayout->addWidget(orderCartItem);
+
+        bool ok = connect(orderCartItem, &OrderCartWidget::updateQuantity,
+                          this, &OrderForm::updateQuantity); // connect to OrderForm's signal
+
+        qDebug() << "populateOrderOnRightPanel Signal to OrderChart : " << ok;
+
     }
 
     subTotalText->setText(locale.toString(subTotal, 'f', 0));
@@ -566,7 +580,7 @@ void OrderForm::updateCurrentTabName(const QString &newName) {
 void OrderForm::removeSku(const int &productId, const Sku &sku) {
     bool isRemoveItem = false; // Initialize the flag
 
-    for (OrderItem &orderItem : order.orderItems) {
+    for (OrderItem &orderItem : order->orderItems) {
         if (orderItem.productId == productId) {
             if (orderItem.orderItemSkus.size() > 1) {
                 // Remove the SKU from the order item
@@ -583,23 +597,26 @@ void OrderForm::removeSku(const int &productId, const Sku &sku) {
     }
 
     if (isRemoveItem) {
-        order.orderItems.erase(std::remove_if(order.orderItems.begin(), order.orderItems.end(),
+        order->orderItems.erase(std::remove_if(order->orderItems.begin(), order->orderItems.end(),
                                               [productId](const OrderItem &item) { return item.productId == productId; }),
-                               order.orderItems.end());
+                               order->orderItems.end());
     }
 
     populateOrderOnRightPanel();
 }
 
-void OrderForm::updateOrderData(const Product &product, const Sku &sku,
-                                const bool &add) {
-    QList<OrderItemSku> orderItemSkus;
-    bool found;
+void OrderForm::updateOrderData(const Product &product, const Sku &sku, const bool &add) {
+    if (!order) {
+        order = new Order();  // Ensure 'order' is initialized
+        qDebug() << "Order was null. Initialized new order.";
+    }
 
-    for (OrderItem &orderItem : order.orderItems) {
+    bool found = false;
+
+    for (OrderItem &orderItem : order->orderItems) {
         if (orderItem.productId == product.id) {
             if (!checkSku(sku, add, orderItem)) {
-                OrderItemSku orderItemSku(sku.id, sku.name, 1, sku.price, sku.price*1);
+                OrderItemSku orderItemSku(sku.id, sku.name, 1, sku.price, sku.price);
                 orderItem.orderItemSkus.append(orderItemSku);
             }
             found = true;
@@ -607,17 +624,21 @@ void OrderForm::updateOrderData(const Product &product, const Sku &sku,
         }
     }
 
-    if (order.orderItems.isEmpty() || !found) {
-        OrderItemSku orderItemSku(sku.id, sku.name, 1, sku.price, sku.price*1);
-        orderItemSkus.append(orderItemSku);
+    qDebug() << "Updating quantity for Prod:" << product.name << product.id << " Found:" << found;
+
+    if (order->orderItems.isEmpty() || !found) {
+        QList<OrderItemSku> orderItemSkus = {
+            OrderItemSku(sku.id, sku.name, 1, sku.price, sku.price)};
         OrderItem orderItem(product.id, product.name, product.categoryId, orderItemSkus);
-        order.orderItems.append(orderItem);
+        order->orderItems.append(orderItem);
     }
 
     populateOrderOnRightPanel();
 }
 
+
 void OrderForm::updateQuantity(const Product &product, const Sku &sku, bool add) {
+    qDebug() << "Updating quantity for Product:" << product.name << "Add:" << add;
     qDebug() << "Updating quantity for SKU:" << sku.name << "Add:" << add;
     updateOrderData(product, sku, add);
     populateOrderOnRightPanel(); // If this refreshes UI

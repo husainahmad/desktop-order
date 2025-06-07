@@ -101,3 +101,4 @@ win32 {
 
 win32:LIBS += -lwinspool
 
+DEFINES -= QT_NO_DEBUG_OUTPUT

@@ -39,9 +39,26 @@ SkuWidget::SkuWidget(Product product, OrderForm *orderForm, QWidget *parent)
             );
 
         addButton->setFixedSize(100, 30);
-        connect(addButton, &QPushButton::clicked, this, [orderForm, product, sku]() {
-            emit orderForm->updateQuantity(product, sku, true);
+
+        int productId = product.id;
+        QString productName = product.name;
+        int categoryId = product.categoryId;
+
+        int skuId = sku.id;
+        QString skuName = sku.name;
+        double price = sku.price;
+
+        connect(addButton, &QPushButton::clicked, this, [=]() {
+
+            qDebug() << "Click productName ?" << productName;
+
+            Product product(productId, productName, categoryId);
+            Sku sku(skuId, skuName, price);
+            //orderForm->updateQuantity(product, sku, true);
+            emit updateQuantity(product, sku, true);
         });
+
+
         skuLayout->addWidget(addButton);
         skuLayout->setAlignment(Qt::AlignCenter);
     }

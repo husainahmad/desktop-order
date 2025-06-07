@@ -66,7 +66,7 @@ private:
     QSettings settings;
     QTreeView *treeView;
     QStandardItemModel *treeModel;
-    Order order;
+    Order *order;
     QVBoxLayout *cartLayout;
     QTextEdit *remarkText;
     QLineEdit *customerNameText;

@@ -10,32 +10,39 @@
 #include <QSplashScreen>
 #include <QTimer>
 
+QTextStream* gLogStream = nullptr;
 
-static QTextStream *gLogStream = nullptr;
+void myMessageHandler(QtMsgType type, const QMessageLogContext &, const QString &msg) {
+    if (!gLogStream) return;
 
-void myMessageHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg)
-{
-    Q_UNUSED(type);
-    Q_UNUSED(context);
-
-    if (gLogStream) {
-        QString output = QString("[%1] %2\n")
-        .arg(QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss"))
-            .arg(msg);
-        *gLogStream << output;
-        gLogStream->flush();
+    QString level;
+    switch (type) {
+    case QtDebugMsg:    level = "DEBUG"; break;
+    case QtInfoMsg:     level = "INFO"; break;
+    case QtWarningMsg:  level = "WARN"; break;
+    case QtCriticalMsg: level = "CRIT"; break;
+    case QtFatalMsg:    level = "FATAL"; break;
     }
+
+    QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss");
+    *gLogStream << "[" << timestamp << "][" << level << "] " << msg << "\n";
+    gLogStream->flush();
 }
 
-
 void installLogger() {
-    QFile *logFile = new QFile("log.txt");
-    logFile->open(QIODevice::Append | QIODevice::Text);
-    gLogStream = new QTextStream(logFile);  // assign to global
+    static QFile *logFile = new QFile("log.txt");  // Creates the file in app working directory
+
+    // Open in append + text mode. This will CREATE the file if it doesn't exist.
+    if (!logFile->open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text)) {
+        qWarning() << "❌ Failed to open or create log.txt";
+        return;
+    }
+
+    static QTextStream *stream = new QTextStream(logFile);
+    gLogStream = stream;
 
     qInstallMessageHandler(myMessageHandler);
 }
-
 
 int main(int argc, char *argv[])
 {

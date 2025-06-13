@@ -32,10 +32,6 @@ OrderTableWidget::OrderTableWidget(const QJsonArray &dataArray, QTabWidget *tabW
     QVBoxLayout *mainLayout = new QVBoxLayout(this);
     mainLayout->setSpacing(0);
 
-    QLabel *titleLabel = new QLabel("", this);
-    titleLabel->setStyleSheet("font-size: 15px; color: white; font-weight: bold;");
-    mainLayout->addWidget(titleLabel);
-
     QTableWidget *tableWidget = new QTableWidget(1, 9, this);
 
     tableWidget->setStyleSheet(
@@ -167,13 +163,6 @@ OrderTableWidget::OrderTableWidget(const QJsonArray &dataArray, QTabWidget *tabW
         tableWidget->setCellWidget(i, 8, container);
         tableWidget->setAlternatingRowColors(true);
     }
-
-    QString titleString = "Total Order : " + QLocale(QLocale::English).toString(total, 'f', 0)  +
-                          " | CASH : Rp. " + QLocale(QLocale::English).toString(cashTotal, 'f', 0) +
-                          " | QRIS : Rp. " + QLocale(QLocale::English).toString(qrTotal, 'f', 0) +
-                          " | CARD : Rp. " + QLocale(QLocale::English).toString(cardTotal, 'f', 0) +
-                          " | Total Amount : Rp. " + QLocale(QLocale::English).toString(grandTotal, 'f', 0);
-    titleLabel->setText(titleString);
 
     // Add table to layout
     mainLayout->addWidget(tableWidget);

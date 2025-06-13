@@ -24,6 +24,8 @@ OrderSummary::OrderSummary(const QJsonArray &dataArray, QWidget *parent)
     double qrTotal = 0;
     double cashTotal = 0;
     double cardTotal = 0;
+    double voidTotal = 0;
+    double confirmTotal = 0;
     double grandTotal = 0;
 
     for (int i = 0; i < dataArray.size(); ++i) {
@@ -31,10 +33,13 @@ OrderSummary::OrderSummary(const QJsonArray &dataArray, QWidget *parent)
         QJsonArray itemsArray = orderObj["orderDetails"].toArray();  // Assuming items are in an array
         grandTotal += orderObj["grandTotal"].toDouble();
 
+
+        QString status = orderObj["status"].toString();
+
         int paymentId = 0; // UnPaid
 
         QJsonObject paymentObject = orderObj["orderPayment"].toObject();
-        if (!paymentObject.isEmpty()) {
+        if (!paymentObject.isEmpty() && status!="VOID") {
             paymentId = paymentObject["paymentId"].toInt();
             if (paymentId==1) {
                 cashTotal += orderObj["grandTotal"].toDouble();
@@ -43,6 +48,16 @@ OrderSummary::OrderSummary(const QJsonArray &dataArray, QWidget *parent)
             } else if (paymentId==3) {
                 cardTotal += orderObj["grandTotal"].toDouble();
             }
+        }
+
+        double total = orderObj["grandTotal"].toDouble();
+
+        if (status == "VOID") {
+            voidTotal += total;
+        }
+
+        if (status == "CONFIRMED") {
+            confirmTotal += total;
         }
 
         for (const QJsonValue &itemValue : itemsArray) {
@@ -86,7 +101,9 @@ OrderSummary::OrderSummary(const QJsonArray &dataArray, QWidget *parent)
     QString titleString = "🔝 Top 10 Best-Selling Items | Total Order : " + formattedCount + " | CASH : Rp. " + QLocale(QLocale::English).toString(cashTotal, 'f', 0) +
                           " | QRIS : Rp. " + QLocale(QLocale::English).toString(qrTotal, 'f', 0) +
                           " | CARD : Rp. " + QLocale(QLocale::English).toString(cardTotal, 'f', 0) +
-                          " | Total Amount : Rp. " + QLocale(QLocale::English).toString(grandTotal, 'f', 0);
+                          " | VOID : Rp. " + QLocale(QLocale::English).toString(voidTotal, 'f', 0) +
+                          " | CONF : Rp. " + QLocale(QLocale::English).toString(confirmTotal, 'f', 0) +
+                          " | TOTAL : Rp. " + QLocale(QLocale::English).toString(grandTotal - voidTotal - confirmTotal, 'f', 0);
 
     QLabel *titleLabel = new QLabel(titleString, this);
     titleLabel->setStyleSheet("font-size: 15px; font-weight: bold; color: white;");

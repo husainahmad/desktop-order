@@ -90,10 +90,12 @@ OrderScreen::OrderScreen(QWidget *parent)
     // Buttons for adding and removing tabs
     QPushButton *addOrderButton = new QPushButton("➕ Add Order", this);
     QPushButton *settlementButton = new QPushButton("💰 Settlement", this);
+    QPushButton *refreshButton = new QPushButton("🔄 Refresh", this);
 
     QSize buttonSize(200, 35);  // width, height
     addOrderButton->setMinimumSize(buttonSize);
     settlementButton->setMinimumSize(buttonSize);
+    refreshButton->setMinimumSize(buttonSize);
 
     // Style the buttons
     QString buttonStyle = "QPushButton {"
@@ -107,6 +109,7 @@ OrderScreen::OrderScreen(QWidget *parent)
 
     addOrderButton->setStyleSheet(buttonStyle);
     settlementButton->setStyleSheet(buttonStyle);
+    refreshButton->setStyleSheet(buttonStyle);
 
     // Create a horizontal layout for the buttons
     QWidget *tabButtonWidget = new QWidget();
@@ -115,6 +118,7 @@ OrderScreen::OrderScreen(QWidget *parent)
     tabButtonLayout->setSpacing(20);
     tabButtonLayout->addStretch(); // Optional: center buttons
     tabButtonLayout->addWidget(addOrderButton);
+    tabButtonLayout->addWidget(refreshButton);
     tabButtonLayout->addWidget(settlementButton);
     tabButtonLayout->addStretch();
 
@@ -126,6 +130,7 @@ OrderScreen::OrderScreen(QWidget *parent)
     // Connect button signals to slots
     connect(addOrderButton, &QPushButton::clicked, this, &OrderScreen::onOrderClicked);
     connect(settlementButton, &QPushButton::clicked, this, &OrderScreen::onSettlementClicked);
+    connect(refreshButton, &QPushButton::clicked, this, &OrderScreen::fetchDataFromAPI);
 
     connect(tabWidget, &QTabWidget::currentChanged, this, &OrderScreen::onTabChanged);  // 👈 Connect tab change event
 
@@ -172,7 +177,7 @@ void OrderScreen::parseJsonResponse(const QByteArray &responseData) {
     QJsonObject jsonObj = jsonDoc.object();
     QJsonArray dataArray = jsonObj["data"].toArray();
 
-    OrderTableWidget *orderWidget = new OrderTableWidget(dataArray, this);
+    OrderTableWidget *orderWidget = new OrderTableWidget(dataArray, tabWidget, this);
 
     QLayoutItem *childOrder;
     while ((childOrder = ordersLayout->takeAt(0)) != nullptr) {
@@ -282,6 +287,7 @@ void OrderScreen::closeEvent(QCloseEvent *event) {
         event->ignore();
     }
 }
+
 OrderScreen::~OrderScreen()
 {
     delete ui;

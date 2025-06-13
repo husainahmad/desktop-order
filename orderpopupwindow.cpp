@@ -1,6 +1,7 @@
 #include "orderpopupwindow.h"
 #include <QVBoxLayout>
 #include <QPushButton>
+#include <QMessageBox>
 #include <QTextBrowser>
 #include <QJsonObject>
 #include <QString>
@@ -8,12 +9,16 @@
 #include <QLocale>
 #include <QTimeZone>
 #include <QProcess>
+#include <QNetworkAccessManager>
+#include <QNetworkRequest>
+#include <QNetworkReply>
 #include <orderprint.h>
+#include <orderpaymentpopup.h>
 
-OrderPopupWindow::OrderPopupWindow(const QJsonObject &order, QWidget *parent)
-    : QDialog(parent), orderDetails(order) {
+OrderPopupWindow::OrderPopupWindow(const QJsonObject &order, QTabWidget *tabWidget, QWidget *parent)
+    : QDialog(parent), networkManager(new QNetworkAccessManager(this)), orderDetails(order), tabWidget(tabWidget) {
     setWindowTitle("Order Details");
-    setFixedSize(800, 700);
+    setFixedSize(850, 700);
 
     locale = QLocale::English;
 
@@ -40,7 +45,7 @@ OrderPopupWindow::OrderPopupWindow(const QJsonObject &order, QWidget *parent)
             }
             table {
                 width: 100%;
-                min-width: 700px; /* ensures wide tables */
+                min-width: 700px;
                 border-collapse: collapse;
                 border: 1px solid #ddd;
             }
@@ -49,7 +54,7 @@ OrderPopupWindow::OrderPopupWindow(const QJsonObject &order, QWidget *parent)
                 padding: 12px;
                 text-align: left;
                 font-size: 14px;
-                white-space: nowrap; /* prevent text from wrapping */
+                white-space: nowrap;
             }
             th {
                 background-color: #4CAF50;
@@ -58,7 +63,16 @@ OrderPopupWindow::OrderPopupWindow(const QJsonObject &order, QWidget *parent)
             tr:nth-child(even) {
                 background-color: #f9f9f9;
             }
-            td:last-child, td:nth-child(3), td:nth-child(4) {
+
+            /* Narrower Quantity column */
+            th:nth-child(3), td:nth-child(3) {
+                width: 20px;
+                text-align: center;
+            }
+            /* Optional: shrink Price and Amount if needed */
+            th:nth-child(4), td:nth-child(4),
+            th:nth-child(5), td:nth-child(5) {
+                width: 80px;
                 text-align: right;
             }
         </style>
@@ -178,6 +192,23 @@ OrderPopupWindow::OrderPopupWindow(const QJsonObject &order, QWidget *parent)
     connect(printKitchenButton, &QPushButton::clicked, this, &OrderPopupWindow::kitchenPrintOrder);
     buttonLayout->addWidget(printKitchenButton);
 
+    QString status = order.value("status").toString().toUpper();
+
+    // PAY button for CONFIRMED orders
+    if (status == "CONFIRMED" || status == "PAID") {
+        if (status == "CONFIRMED") {
+            payButton = new QPushButton("Pay", this);
+            payButton->setStyleSheet(buttonStyle);
+            connect(payButton, &QPushButton::clicked, this, &OrderPopupWindow::payOrder);
+            buttonLayout->addWidget(payButton);
+        }
+
+        voidButton = new QPushButton("Void", this);
+        voidButton->setStyleSheet(buttonStyle);
+        connect(voidButton, &QPushButton::clicked, this, &OrderPopupWindow::voidOrder);
+        buttonLayout->addWidget(voidButton);
+    }
+
     // Close button
     closeButton = new QPushButton("Close", this);
     closeButton->setStyleSheet(buttonStyle);
@@ -190,8 +221,53 @@ OrderPopupWindow::OrderPopupWindow(const QJsonObject &order, QWidget *parent)
 }
 
 OrderPopupWindow::~OrderPopupWindow() {
-    // Qt handles child widget cleanup automatically
 }
+
+void OrderPopupWindow::payOrder() {
+    OrderPaymentPopup *popup = new OrderPaymentPopup(this->orderDetails, this->tabWidget, this);
+
+    connect(popup, &QDialog::accepted, this, [=]() {
+      this->accept();  // Close OrderPopupWindow only if payment was successful
+    });
+
+    popup->exec();  // Show payment popup modally
+}
+
+void OrderPopupWindow::voidOrder() {
+    QString authToken = configSetting.getValue("authToken").toString().trimmed();
+
+    int orderId = orderDetails["id"].toInt();  // Use toInt()
+    QUrl apiUrl(QString(configSetting.getApiEndpoint("order", "void")).arg(orderId));
+
+    QNetworkRequest request(apiUrl);
+    request.setRawHeader("Authorization", "Bearer " + authToken.toUtf8());
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+
+    // Empty body
+    QNetworkReply *reply = networkManager->put(request, QByteArray());
+
+    // Handle API response
+    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+        if (reply->error() == QNetworkReply::NoError) {
+            QByteArray responseData = reply->readAll();
+
+            if (responseData.isEmpty()) {
+                qDebug() << "Empty response received!";
+                QMessageBox::warning(this, "Error", "No response from the server.");
+            } else {
+                qDebug() << "Void successful: " << responseData;
+                this->accept();  // Close OrderPopupWindow
+            }
+        } else {
+            qDebug() << "Void order failed: " << reply->errorString();
+            QMessageBox::warning(this, "Error", "Failed to void the order. Please try again.");
+        }
+
+        reply->deleteLater();
+    });
+}
+
+
 
 void OrderPopupWindow::printOrder() {
     OrderPrint printer(orderDetails);

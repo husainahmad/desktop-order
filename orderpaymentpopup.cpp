@@ -35,35 +35,45 @@ OrderPaymentPopup::OrderPaymentPopup(const QJsonObject &order, QTabWidget *tabWi
 
     QJsonArray orderDetails = order.value("orderDetails").toArray();
     QString table = R"(
-        <style>
-            .scroll-container {
-                width: 100%;
-                overflow-x: auto;
-            }
-            table {
-                width: 100%;
-                min-width: 700px; /* ensures wide tables */
-                border-collapse: collapse;
-                border: 1px solid #ddd;
-            }
-            th, td {
-                border: 1px solid #ddd;
-                padding: 12px;
-                text-align: left;
-                font-size: 14px;
-                white-space: nowrap; /* prevent text from wrapping */
-            }
-            th {
-                background-color: #4CAF50;
-                color: white;
-            }
-            tr:nth-child(even) {
-                background-color: #f9f9f9;
-            }
-            td:last-child, td:nth-child(3), td:nth-child(4) {
-                text-align: right;
-            }
-        </style>
+            <style>
+                .scroll-container {
+                    width: 100%;
+                    overflow-x: auto;
+                }
+                table {
+                    width: 100%;
+                    min-width: 700px;
+                    border-collapse: collapse;
+                    border: 1px solid #ddd;
+                }
+                th, td {
+                    border: 1px solid #ddd;
+                    padding: 12px;
+                    text-align: left;
+                    font-size: 14px;
+                    white-space: nowrap;
+                }
+                th {
+                    background-color: #4CAF50;
+                    color: white;
+                }
+                tr:nth-child(even) {
+                    background-color: #f9f9f9;
+                }
+
+                /* 👇 Specific column widths and alignments */
+                th:nth-child(3), td:nth-child(3) {
+                    width: 50px;
+                    text-align: center;
+                }
+
+                th:nth-child(4), td:nth-child(4),
+                th:nth-child(5), td:nth-child(5) {
+                    width: 90px;
+                    text-align: right;
+                }
+            </style>
+
         <div class='scroll-container'>
     )";
 
@@ -199,6 +209,12 @@ OrderPaymentPopup::OrderPaymentPopup(const QJsonObject &order, QTabWidget *tabWi
     payButton->setStyleSheet(buttonStyle);
     buttonLayout->addWidget(payButton);
 
+    QPushButton *closeButton = new QPushButton("Close", this);
+    closeButton->setStyleSheet(buttonStyle);
+    buttonLayout->addWidget(closeButton);
+
+    connect(closeButton, &QPushButton::clicked, this, &OrderPaymentPopup::reject);
+
     mainLayout->addLayout(buttonLayout);
     // Connect button signals
     connect(payButton, &QPushButton::clicked, this, &OrderPaymentPopup::processPayment);
@@ -314,8 +330,12 @@ void OrderPaymentPopup::processPayment() {
             qDebug() << "Order processed successfully!";
 
             // Close the tab after successful payment
-            if (this->tabWidget) {
-                this->tabWidget->removeTab(this->tabWidget->currentIndex());
+            if (this->tabWidget || this->tabWidget != NULL) {
+
+                int index = tabWidget->currentIndex();
+                if (index>0) {
+                    this->tabWidget->removeTab(this->tabWidget->currentIndex());
+                }
             }
 
             // Close the popup after successful payment

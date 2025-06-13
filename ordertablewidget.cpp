@@ -18,9 +18,9 @@
 #include <QJsonArray>
 #include <QPushButton>
 
-OrderTableWidget::OrderTableWidget(const QJsonArray &dataArray, QWidget *parent)
+OrderTableWidget::OrderTableWidget(const QJsonArray &dataArray, QTabWidget *tabWidget, QWidget *parent)
     : QWidget(parent)
-    , ui(new Ui::OrderTableWidget)
+    , ui(new Ui::OrderTableWidget), tabWidget(tabWidget)
 {
     ui->setupUi(this);
 
@@ -54,6 +54,10 @@ OrderTableWidget::OrderTableWidget(const QJsonArray &dataArray, QWidget *parent)
 
     // Resize mode for proper spacing
     tableWidget->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    tableWidget->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
+    tableWidget->horizontalHeader()->setSectionResizeMode(3, QHeaderView::ResizeToContents);
+    tableWidget->horizontalHeader()->setSectionResizeMode(4, QHeaderView::ResizeToContents);
+    tableWidget->horizontalHeader()->setSectionResizeMode(6, QHeaderView::ResizeToContents);
 
     tableWidget->setRowCount(dataArray.size());  // Adjust row count dynamically
 
@@ -98,15 +102,16 @@ OrderTableWidget::OrderTableWidget(const QJsonArray &dataArray, QWidget *parent)
         tableWidget->setItem(i, 0, new QTableWidgetItem(orderNo));
         tableWidget->setItem(i, 1, new QTableWidgetItem(createdAt.toString("yyyy-MM-dd HH:mm")));
         tableWidget->setItem(i, 2, new QTableWidgetItem(customerName));
-        if (paymentId==0) {
-            tableWidget->setItem(i, 3, new QTableWidgetItem(""));
-        } else if (paymentId==1) {
-            tableWidget->setItem(i, 3, new QTableWidgetItem("CASH"));
-        } else if (paymentId==2) {
-            tableWidget->setItem(i, 3, new QTableWidgetItem("QR"));
-        } else if (paymentId==3) {
-            tableWidget->setItem(i, 3, new QTableWidgetItem("CARD"));
+
+        QString paymentMethod;
+        switch (paymentId) {
+            case 1: paymentMethod = "CASH"; break;
+            case 2: paymentMethod = "QR"; break;
+            case 3: paymentMethod = "CARD"; break;
+            default: paymentMethod = ""; break;
         }
+
+        tableWidget->setItem(i, 3, new QTableWidgetItem(paymentMethod));
 
         tableWidget->setItem(i, 4, new QTableWidgetItem(statusOrder));
 
@@ -147,13 +152,9 @@ OrderTableWidget::OrderTableWidget(const QJsonArray &dataArray, QWidget *parent)
             "}"
             );
 
-        // Connect button signal to a slot (optional)
-        QObject::connect(button, &QPushButton::clicked, [orderObj]() {
-            qDebug() << "Button clicked in row:" << orderObj;
-
-            OrderPopupWindow popup(orderObj);
+        QObject::connect(button, &QPushButton::clicked, [this, orderObj]() {
+            OrderPopupWindow popup(orderObj, this->tabWidget);
             popup.exec();
-
         });
 
         // Create a widget to hold the button

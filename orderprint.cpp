@@ -68,14 +68,45 @@ void OrderPrint::sendToReceiptPrinter() {
     receiptData.append("--------------------------------\n");
 
     double grandTotal = orderDetails["grandTotal"].toDouble();
-    receiptData.append(QString("Total: Rp %1\n").arg(locale.toString(grandTotal, 'f', 0)).toUtf8());
+
+    QString paymentName = "UNPAID";
+
+    if (orderDetails.contains("orderPayment") && orderDetails["orderPayment"].isObject()) {
+        QJsonObject orderPayment = orderDetails["orderPayment"].toObject();
+        if (!orderPayment.isEmpty() && orderPayment.contains("paymentId")) {
+            int paymentId = orderPayment["paymentId"].toInt();
+
+            switch (paymentId) {
+            case 1:
+                paymentName = "Cash";
+                break;
+            case 2:
+                paymentName = "QR Payment";
+                break;
+            case 3:
+                paymentName = "Card Payment";
+                break;
+            default:
+                paymentName = "UNPAID";
+                break;
+            }
+        }
+    }
+
+    receiptData.append("Payment: " + paymentName.toUtf8() + "\n");
+
+
+    receiptData.append(QString("Total: Rp %1\n")
+                           .arg(locale.toString(grandTotal, 'f', 0)).toUtf8());
 
     QString note = orderDetails["remark"].toString();
     if (!note.isEmpty()) {
         receiptData.append("Note: " + note.toUtf8() + "\n");
     }
 
+    receiptData.append("\x1B\x61\x01");
     receiptData.append("Terima kasih\n");
+    receiptData.append("Printed on: " + QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm").toUtf8() + "\n");
     receiptData.append("\n\n\n");         // Add spacing
     receiptData.append("\x1D\x56\x01");   // Cut paper
 
@@ -153,7 +184,7 @@ void OrderPrint::sendToKitchenPrinter() {
         if (!orderDetails["remark"].toString().isEmpty()) {
             receiptData.append("Note: " + orderDetails["remark"].toString().toUtf8() + "\n");
         }
-
+        receiptData.append("Printed on: " + QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm").toUtf8() + "\n");
         receiptData.append("\n\n\n");       // Spacing
         receiptData.append("\x1D\x56\x01"); // Cut paper
 

@@ -10,6 +10,7 @@ CONFIG += c++17
 
 SOURCES += \
     brand.cpp \
+    cacheutils.cpp \
     chain.cpp \
     loginscreen.cpp \
     main.cpp \
@@ -38,6 +39,7 @@ SOURCES += \
 
 HEADERS += \
     brand.h \
+    cacheutils.h \
     chain.h \
     loginscreen.h \
     mainwindow.h \

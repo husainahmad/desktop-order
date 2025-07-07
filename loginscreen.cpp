@@ -12,6 +12,7 @@
 #include <QSettings>
 #include <QLabel>
 #include <setting.h>
+#include "cacheutils.h"
 
 LoginScreen::LoginScreen(QWidget *parent)
     : QWidget(parent), ui(new Ui::LoginScreen), networkManager(new QNetworkAccessManager(this))
@@ -142,6 +143,8 @@ void LoginScreen::handleUserDetail() {
             if (responseData.isEmpty()) {
                 return;
             }
+
+            CacheUtils::clearAppCache();
 
             QJsonDocument jsonDoc = QJsonDocument::fromJson(responseData);
             QJsonObject jsonObj = jsonDoc.object();

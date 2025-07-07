@@ -89,8 +89,8 @@ OrderSummary::OrderSummary(const QJsonArray &dataArray, QWidget *parent)
     });
 
     // Keep only top 10 items
-    if (sortedItemSales.size() > 10) {
-        sortedItemSales = sortedItemSales.mid(0, 10);
+    if (sortedItemSales.size() > 20) {
+        sortedItemSales = sortedItemSales.mid(0, 20);
     }
 
     QString formattedCount = QLocale(QLocale::English).toString(dataArray.size());

@@ -17,6 +17,8 @@
 #include <QTreeView>
 #include <QStandardItemModel>
 #include <QStandardItem>
+#include <QFile>
+#include <QStandardPaths>
 #include <product.h>
 #include <cartitemwidget.h>
 #include <ordercartwidget.h>
@@ -205,6 +207,18 @@ OrderForm::OrderForm(QTabWidget *tabWidget, QWidget *parent)
 }
 
 void OrderForm::fetchDataFromAPI() {
+    QString cachePath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/category_cache.json";
+    QFile cacheFile(cachePath);
+    if (cacheFile.exists() && cacheFile.open(QIODevice::ReadOnly)) {
+        QByteArray data = cacheFile.readAll();
+        cacheFile.close();
+
+        QJsonDocument doc = QJsonDocument::fromJson(data);
+        QJsonArray dataArray = doc.object()["data"].toArray();
+        updateCategoryLeftPanel(dataArray);
+        qDebug() << "Loaded categories from cache.";
+        return;
+    }
 
     QNetworkRequest requestCategory(QUrl(settingConfig.getApiEndpoint("menu", "category") + "/tier"));
     requestCategory.setRawHeader("Authorization", "Bearer " + settingConfig.getValue("authToken").toString().toUtf8());
@@ -217,15 +231,56 @@ void OrderForm::fetchDataFromAPI() {
 }
 
 void OrderForm::fetchDataDetailProduct(QString id) {
+    QString cachePath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)
+    + QString("/product_cache_%1.json").arg(id);
+    QFile cacheFile(cachePath);
+    if (cacheFile.exists() && cacheFile.open(QIODevice::ReadOnly)) {
+        QByteArray data = cacheFile.readAll();
+        cacheFile.close();
+
+        QJsonDocument doc = QJsonDocument::fromJson(data);
+        QJsonArray dataArray = doc.object()["data"].toArray();
+        updateProductLeftTopPanel(dataArray);
+        qDebug() << "Loaded products for category" << id << "from cache.";
+        return;
+    }
+
     QNetworkRequest requestDetailProduct(QUrl(QString(settingConfig.getApiEndpoint("menu","product") + "/category/%1/price").arg(id)));
     requestDetailProduct.setRawHeader("Authorization", "Bearer " + settingConfig.getValue("authToken").toString().toUtf8());
     requestDetailProduct.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
     QNetworkReply* replyDetailProduct = networkManager->get(requestDetailProduct);
 
-    connect(replyDetailProduct, &QNetworkReply::finished, this, [this, replyDetailProduct]() {
-        this->onDataDetailProductReceived(replyDetailProduct);
+    connect(replyDetailProduct, &QNetworkReply::finished, this, [this, replyDetailProduct, id]() {
+        if (replyDetailProduct->error() != QNetworkReply::NoError) {
+            qDebug() << "API Error: " << replyDetailProduct->errorString();
+            return;
+        }
+
+        QByteArray responseData = replyDetailProduct->readAll();
+        if (responseData.isEmpty()) {
+            return;
+        }
+
+        // Save to per-category cache
+        QString cachePath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)
+                            + QString("/product_cache_%1.json").arg(id);
+        QFile cacheFile(cachePath);
+        if (cacheFile.open(QIODevice::WriteOnly)) {
+            cacheFile.write(responseData);
+            cacheFile.close();
+            qDebug() << "Cached products for category" << id << "to disk.";
+        }
+
+        QJsonDocument jsonDoc = QJsonDocument::fromJson(responseData);
+        QJsonObject jsonObj = jsonDoc.object();
+        QJsonArray dataArray = jsonObj["data"].toArray();
+
+        updateProductLeftTopPanel(dataArray);
+
+        replyDetailProduct->deleteLater();
     });
 }
+
 
 void OrderForm::onDataReceived(QNetworkReply *reply) {
     if (reply->error() != QNetworkReply::NoError) {
@@ -241,6 +296,15 @@ void OrderForm::onDataReceived(QNetworkReply *reply) {
     QJsonDocument jsonDoc = QJsonDocument::fromJson(responseData);
     QJsonObject jsonObj = jsonDoc.object();
     QJsonArray dataArray = jsonObj["data"].toArray();
+
+    // Write to cache
+    QString cachePath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/category_cache.json";
+    QFile cacheFile(cachePath);
+    if (cacheFile.open(QIODevice::WriteOnly)) {
+        cacheFile.write(responseData);
+        cacheFile.close();
+        qDebug() << "Cached API response to disk.";
+    }
 
     updateCategoryLeftPanel(dataArray);
     reply->deleteLater();

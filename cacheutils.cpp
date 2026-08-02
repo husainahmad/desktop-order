@@ -7,13 +7,20 @@
 CacheUtils::CacheUtils() {}
 
 void CacheUtils::clearAppCache() {
-    QString appDataPath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    const QStringList locations = {
+        QStandardPaths::writableLocation(QStandardPaths::AppDataLocation),
+        QStandardPaths::writableLocation(QStandardPaths::CacheLocation)
+    };
 
-    QFile::remove(appDataPath + "/category_cache.json");
+    for (const QString &dirPath : locations) {
+        if (dirPath.isEmpty()) {
+            continue;
+        }
 
-    QDir dir(appDataPath);
-    QStringList filters = QStringList() << "product_cache_*.json";
-    for (const QString &file : dir.entryList(filters, QDir::Files)) {
-        QFile::remove(appDataPath + "/" + file);
+        QDir dir(dirPath);
+        QStringList filters = QStringList() << "*.json";
+        for (const QString &file : dir.entryList(filters, QDir::Files)) {
+            QFile::remove(dir.filePath(file));
+        }
     }
 }

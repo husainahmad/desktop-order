@@ -1,5 +1,6 @@
 #include "orderform.h"
 #include "ui_orderform.h"
+#include "touchutils.h"
 #include <QLabel>
 #include <QTextEdit>
 #include <QTableWidgetItem>
@@ -27,6 +28,7 @@
 #include "productimage.h"
 #include "productwidget.h"
 #include "skuwidget.h"
+#include "tokenmanager.h"
 #include <QLocale>
 #include <QMessageBox>
 #include <toast.h>
@@ -79,6 +81,7 @@ OrderForm::OrderForm(QTabWidget *tabWidget, QWidget *parent)
     QScrollArea *scrollArea = new QScrollArea();
     scrollArea->setWidgetResizable(true);
     scrollArea->setWidget(topLeftWidget);
+    TouchUtils::enableTouchScrolling(scrollArea);
 
     topLeftLayout->addWidget(scrollArea);  // Add scrollable product grid below the search box
     topLeftContainer->setLayout(topLeftLayout);
@@ -88,6 +91,7 @@ OrderForm::OrderForm(QTabWidget *tabWidget, QWidget *parent)
     QScrollArea *bottomScrollArea = new QScrollArea();
     bottomScrollArea->setWidgetResizable(true);
     bottomScrollArea->setWidget(bottomLeftWidget);
+    TouchUtils::enableTouchScrolling(bottomScrollArea);
 
     leftSplitter->addWidget(topLeftContainer);
     leftSplitter->addWidget(bottomScrollArea);
@@ -113,6 +117,7 @@ OrderForm::OrderForm(QTabWidget *tabWidget, QWidget *parent)
     QScrollArea *rightScrollArea = new QScrollArea();
     rightScrollArea->setWidgetResizable(true);
     rightScrollArea->setWidget(cartPanel);
+    TouchUtils::enableTouchScrolling(rightScrollArea);
 
     cartLayout->setContentsMargins(0, 0, 0, 0);
     cartLayout->setSpacing(0);
@@ -207,7 +212,7 @@ OrderForm::OrderForm(QTabWidget *tabWidget, QWidget *parent)
 }
 
 void OrderForm::fetchDataFromAPI() {
-    QString cachePath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/category_cache.json";
+    QString cachePath = QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + "/category_cache.json";
     QFile cacheFile(cachePath);
     if (cacheFile.exists() && cacheFile.open(QIODevice::ReadOnly)) {
         QByteArray data = cacheFile.readAll();
@@ -221,7 +226,7 @@ void OrderForm::fetchDataFromAPI() {
     }
 
     QNetworkRequest requestCategory(QUrl(settingConfig.getApiEndpoint("menu", "category") + "/tier"));
-    requestCategory.setRawHeader("Authorization", "Bearer " + settingConfig.getValue("authToken").toString().toUtf8());
+    requestCategory.setRawHeader("Authorization", "Bearer " + TokenManager::instance().getAccessToken().toUtf8());
     requestCategory.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
     QNetworkReply* replyCategory = networkManager->get(requestCategory);
 
@@ -231,7 +236,7 @@ void OrderForm::fetchDataFromAPI() {
 }
 
 void OrderForm::fetchDataDetailProduct(QString id) {
-    QString cachePath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)
+    QString cachePath = QStandardPaths::writableLocation(QStandardPaths::CacheLocation)
     + QString("/product_cache_%1.json").arg(id);
     QFile cacheFile(cachePath);
     if (cacheFile.exists() && cacheFile.open(QIODevice::ReadOnly)) {
@@ -246,7 +251,7 @@ void OrderForm::fetchDataDetailProduct(QString id) {
     }
 
     QNetworkRequest requestDetailProduct(QUrl(QString(settingConfig.getApiEndpoint("menu","product") + "/category/%1/price").arg(id)));
-    requestDetailProduct.setRawHeader("Authorization", "Bearer " + settingConfig.getValue("authToken").toString().toUtf8());
+    requestDetailProduct.setRawHeader("Authorization", "Bearer " + TokenManager::instance().getAccessToken().toUtf8());
     requestDetailProduct.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
     QNetworkReply* replyDetailProduct = networkManager->get(requestDetailProduct);
 
@@ -262,7 +267,7 @@ void OrderForm::fetchDataDetailProduct(QString id) {
         }
 
         // Save to per-category cache
-        QString cachePath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)
+        QString cachePath = QStandardPaths::writableLocation(QStandardPaths::CacheLocation)
                             + QString("/product_cache_%1.json").arg(id);
         QFile cacheFile(cachePath);
         if (cacheFile.open(QIODevice::WriteOnly)) {
@@ -298,7 +303,7 @@ void OrderForm::onDataReceived(QNetworkReply *reply) {
     QJsonArray dataArray = jsonObj["data"].toArray();
 
     // Write to cache
-    QString cachePath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/category_cache.json";
+    QString cachePath = QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + "/category_cache.json";
     QFile cacheFile(cachePath);
     if (cacheFile.open(QIODevice::WriteOnly)) {
         cacheFile.write(responseData);
@@ -548,7 +553,7 @@ void OrderForm::onConfirmButtonClicked() {
     QByteArray jsonData = jsonDoc.toJson();
 
     QNetworkRequest request(QUrl(settingConfig.getApiEndpoint("order","confirm")));
-    request.setRawHeader("Authorization", "Bearer " + settingConfig.getValue("authToken").toString().toUtf8());
+    request.setRawHeader("Authorization", "Bearer " + TokenManager::instance().getAccessToken().toUtf8());
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
 
     QNetworkReply *reply = networkManager->post(request, jsonData);

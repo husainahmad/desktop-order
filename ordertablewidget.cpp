@@ -1,6 +1,7 @@
 #include "ordertablewidget.h"
 #include "ui_ordertablewidget.h"
 #include "orderpopupwindow.h"
+#include "touchutils.h"
 
 #include <QBoxLayout>
 #include <QLabel>
@@ -23,11 +24,6 @@ OrderTableWidget::OrderTableWidget(const QJsonArray &dataArray, QTabWidget *tabW
     , ui(new Ui::OrderTableWidget), tabWidget(tabWidget)
 {
     ui->setupUi(this);
-
-    double qrTotal = 0;
-    double cashTotal = 0;
-    double cardTotal = 0;
-    double grandTotal = 0;
 
     QVBoxLayout *mainLayout = new QVBoxLayout(this);
     mainLayout->setSpacing(0);
@@ -54,6 +50,7 @@ OrderTableWidget::OrderTableWidget(const QJsonArray &dataArray, QTabWidget *tabW
     tableWidget->horizontalHeader()->setSectionResizeMode(3, QHeaderView::ResizeToContents);
     tableWidget->horizontalHeader()->setSectionResizeMode(4, QHeaderView::ResizeToContents);
     tableWidget->horizontalHeader()->setSectionResizeMode(6, QHeaderView::ResizeToContents);
+    TouchUtils::enableItemViewScrolling(tableWidget);
 
     tableWidget->setRowCount(dataArray.size());  // Adjust row count dynamically
 
@@ -71,17 +68,6 @@ OrderTableWidget::OrderTableWidget(const QJsonArray &dataArray, QTabWidget *tabW
         int paymentId = 0; // UnPaid
 
         QJsonObject paymentObject = orderObj["orderPayment"].toObject();
-
-        if (!paymentObject.isEmpty()) {
-            paymentId = paymentObject["paymentId"].toInt();
-            if (paymentId==1) {
-                cashTotal += orderObj["grandTotal"].toDouble();
-            } else if (paymentId==2) {
-                qrTotal += orderObj["grandTotal"].toDouble();
-            } else if (paymentId==3) {
-                cardTotal += orderObj["grandTotal"].toDouble();
-            }
-        }
 
         total += grandTotal;
         // Parse "createdAt" safely

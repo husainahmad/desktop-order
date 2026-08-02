@@ -14,11 +14,14 @@
 #include <QNetworkReply>
 #include <orderprint.h>
 #include <orderpaymentpopup.h>
+#include "tokenmanager.h"
+#include "screenutils.h"
+#include "touchutils.h"
 
 OrderPopupWindow::OrderPopupWindow(const QJsonObject &order, QTabWidget *tabWidget, QWidget *parent)
     : QDialog(parent), networkManager(new QNetworkAccessManager(this)), orderDetails(order), tabWidget(tabWidget) {
     setWindowTitle("Order Details");
-    setFixedSize(850, 700);
+    setFixedSize(ScreenUtils::fittedSize(850, 700, 0.95, 0.92));
 
     locale = QLocale::English;
 
@@ -27,8 +30,9 @@ OrderPopupWindow::OrderPopupWindow(const QJsonObject &order, QTabWidget *tabWidg
     // HTML viewer to display order details
     htmlViewer = new QTextBrowser(this);
     htmlViewer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    htmlViewer->setMinimumWidth(600);  // Set a minimum width
+    htmlViewer->setMinimumWidth(520);  // Set a minimum width
     htmlViewer->setMaximumWidth(16777215);  // Ensure no limit
+    TouchUtils::enableTouchScrolling(htmlViewer);
 
     // Extract data from QJsonObject
 
@@ -45,15 +49,15 @@ OrderPopupWindow::OrderPopupWindow(const QJsonObject &order, QTabWidget *tabWidg
             }
             table {
                 width: 100%;
-                min-width: 700px;
+                min-width: 620px;
                 border-collapse: collapse;
                 border: 1px solid #ddd;
             }
             th, td {
                 border: 1px solid #ddd;
-                padding: 12px;
+                padding: 8px;
                 text-align: left;
-                font-size: 14px;
+                font-size: 13px;
                 white-space: nowrap;
             }
             th {
@@ -234,7 +238,7 @@ void OrderPopupWindow::payOrder() {
 }
 
 void OrderPopupWindow::voidOrder() {
-    QString authToken = configSetting.getValue("authToken").toString().trimmed();
+    QString authToken = TokenManager::instance().getAccessToken();
 
     int orderId = orderDetails["id"].toInt();  // Use toInt()
     QUrl apiUrl(QString(configSetting.getApiEndpoint("order", "void")).arg(orderId));

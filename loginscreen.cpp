@@ -13,13 +13,15 @@
 #include <QLabel>
 #include <setting.h>
 #include "cacheutils.h"
+#include "tokenmanager.h"
+#include "screenutils.h"
 
 LoginScreen::LoginScreen(QWidget *parent)
     : QWidget(parent), ui(new Ui::LoginScreen), networkManager(new QNetworkAccessManager(this))
 {
     ui->setupUi(this);
     setWindowTitle("Login");
-    setFixedSize(400, 500); // Fixed window size
+    setFixedSize(ScreenUtils::fittedSize(440, 560, 0.8, 0.85)); // Sized to fit 13" screens
 
     // Main Layout
     QVBoxLayout *layout = new QVBoxLayout(this);
@@ -67,6 +69,8 @@ LoginScreen::LoginScreen(QWidget *parent)
     setLayout(layout);
 
     connect(loginButton, &QPushButton::clicked, this, &LoginScreen::handleLogin);
+    connect(usernameEdit, &QLineEdit::returnPressed, this, &LoginScreen::handleLogin);
+    connect(passwordEdit, &QLineEdit::returnPressed, this, &LoginScreen::handleLogin);
 }
 
 LoginScreen::~LoginScreen()
@@ -105,10 +109,12 @@ void LoginScreen::handleLogin() {
 
             QJsonDocument jsonDoc = QJsonDocument::fromJson(responseData);
             QJsonObject jsonObj = jsonDoc.object();
-            QString dataToken = jsonObj["data"].toString();
+            QJsonObject tokenObj = jsonObj["data"].isObject() ? jsonObj["data"].toObject() : jsonObj;
 
-            settingConfig.setValue("authToken", dataToken);
-            settingConfig.sync();
+            QString accessToken = tokenObj["accessToken"].toString();
+            QString refreshToken = tokenObj["refreshToken"].toString();
+
+            TokenManager::instance().setTokens(accessToken, refreshToken);
 
             handleUserDetail();
         } else {
@@ -132,7 +138,7 @@ void LoginScreen::handleUserDetail() {
 
     QNetworkRequest requestUser(QUrl(loginUrl + "/" + username));
     requestUser.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
-    requestUser.setRawHeader("Authorization", "Bearer " + settingConfig.getValue("authToken").toString().toUtf8());
+    requestUser.setRawHeader("Authorization", "Bearer " + TokenManager::instance().getAccessToken().toUtf8());
 
     QNetworkReply* replyDetail = networkManager->get(requestUser);
 

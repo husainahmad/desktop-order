@@ -4,6 +4,11 @@
 #include "ordersummary.h"
 #include "ordertablewidget.h"
 #include "orderprint.h"
+#include "dailyreportscreen.h"
+#include "salesreportscreen.h"
+#include "cacheutils.h"
+#include "tokenmanager.h"
+#include "screenutils.h"
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -30,7 +35,8 @@ OrderScreen::OrderScreen(QWidget *parent)
     locale = QLocale::English;
 
     setWindowTitle("Daily Order");
-    resize(600, 400);
+    resize(ScreenUtils::fittedSize(1280, 800, 1.0, 1.0));
+    setMinimumSize(1024, 640);
 
     // Create main layout
     QVBoxLayout *mainLayout = new QVBoxLayout(this);
@@ -90,11 +96,15 @@ OrderScreen::OrderScreen(QWidget *parent)
     // Buttons for adding and removing tabs
     QPushButton *addOrderButton = new QPushButton("➕ Add Order", this);
     QPushButton *settlementButton = new QPushButton("💰 Settlement", this);
+    QPushButton *dailyReportButton = new QPushButton("📊 Daily Report", this);
+    QPushButton *salesReportButton = new QPushButton("📈 Sales Report", this);
     QPushButton *refreshButton = new QPushButton("🔄 Refresh", this);
 
     QSize buttonSize(200, 35);  // width, height
     addOrderButton->setMinimumSize(buttonSize);
     settlementButton->setMinimumSize(buttonSize);
+    dailyReportButton->setMinimumSize(buttonSize);
+    salesReportButton->setMinimumSize(buttonSize);
     refreshButton->setMinimumSize(buttonSize);
 
     // Style the buttons
@@ -109,6 +119,8 @@ OrderScreen::OrderScreen(QWidget *parent)
 
     addOrderButton->setStyleSheet(buttonStyle);
     settlementButton->setStyleSheet(buttonStyle);
+    dailyReportButton->setStyleSheet(buttonStyle);
+    salesReportButton->setStyleSheet(buttonStyle);
     refreshButton->setStyleSheet(buttonStyle);
 
     // Create a horizontal layout for the buttons
@@ -119,6 +131,8 @@ OrderScreen::OrderScreen(QWidget *parent)
     tabButtonLayout->addStretch(); // Optional: center buttons
     tabButtonLayout->addWidget(addOrderButton);
     tabButtonLayout->addWidget(refreshButton);
+    tabButtonLayout->addWidget(dailyReportButton);
+    tabButtonLayout->addWidget(salesReportButton);
     tabButtonLayout->addWidget(settlementButton);
     tabButtonLayout->addStretch();
 
@@ -130,7 +144,12 @@ OrderScreen::OrderScreen(QWidget *parent)
     // Connect button signals to slots
     connect(addOrderButton, &QPushButton::clicked, this, &OrderScreen::onOrderClicked);
     connect(settlementButton, &QPushButton::clicked, this, &OrderScreen::onSettlementClicked);
-    connect(refreshButton, &QPushButton::clicked, this, &OrderScreen::fetchDataFromAPI);
+    connect(dailyReportButton, &QPushButton::clicked, this, &OrderScreen::onDailyReportClicked);
+    connect(salesReportButton, &QPushButton::clicked, this, &OrderScreen::onSalesReportClicked);
+    connect(refreshButton, &QPushButton::clicked, this, [this]() {
+        CacheUtils::clearAppCache();
+        fetchDataFromAPI();
+    });
 
     connect(tabWidget, &QTabWidget::currentChanged, this, &OrderScreen::onTabChanged);  // 👈 Connect tab change event
 
@@ -144,7 +163,7 @@ void OrderScreen::fetchDataFromAPI() {
     QString orderUrl = settingConfig.getApiEndpoint("order","daily");
 
     QNetworkRequest requestOrder(orderUrl);
-    requestOrder.setRawHeader("Authorization", "Bearer " + settingConfig.getValue("authToken").toString().toUtf8());
+    requestOrder.setRawHeader("Authorization", "Bearer " + TokenManager::instance().getAccessToken().toUtf8());
     requestOrder.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
     QNetworkReply* replyOrder = networkManager->get(requestOrder);
 
@@ -213,7 +232,7 @@ void OrderScreen::onSettlementClicked() {
     url.setQuery(query);
 
     QNetworkRequest request(url);
-    request.setRawHeader("Authorization", "Bearer " + settingConfig.getValue("authToken").toString().toUtf8());
+    request.setRawHeader("Authorization", "Bearer " + TokenManager::instance().getAccessToken().toUtf8());
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
 
     QNetworkReply* reply = networkManager->get(request);
@@ -286,6 +305,18 @@ void OrderScreen::closeEvent(QCloseEvent *event) {
     } else {
         event->ignore();
     }
+}
+
+void OrderScreen::onDailyReportClicked() {
+    DailyReportScreen *dailyReportScreen = new DailyReportScreen();
+    dailyReportScreen->setAttribute(Qt::WA_DeleteOnClose);
+    dailyReportScreen->show();
+}
+
+void OrderScreen::onSalesReportClicked() {
+    SalesReportScreen *salesReportScreen = new SalesReportScreen();
+    salesReportScreen->setAttribute(Qt::WA_DeleteOnClose);
+    salesReportScreen->show();
 }
 
 OrderScreen::~OrderScreen()

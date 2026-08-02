@@ -65,7 +65,6 @@ int main(int argc, char *argv[])
     // Simulate loading time (non-blocking)
     QTimer::singleShot(2000, [&]() {
         LoginScreen *loginScreen = new LoginScreen();
-        loginScreen->resize(800, 600);
         loginScreen->show();
         splash.finish(loginScreen);
     });

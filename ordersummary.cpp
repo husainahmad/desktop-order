@@ -1,5 +1,6 @@
 #include "ordersummary.h"
 #include "ui_ordersummary.h"
+#include "touchutils.h"
 
 #include <QMap>
 #include <QJsonObject>
@@ -32,7 +33,6 @@ OrderSummary::OrderSummary(const QJsonArray &dataArray, QWidget *parent)
         QJsonObject orderObj = dataArray[i].toObject();
         QJsonArray itemsArray = orderObj["orderDetails"].toArray();  // Assuming items are in an array
         grandTotal += orderObj["grandTotal"].toDouble();
-
 
         QString status = orderObj["status"].toString();
 
@@ -89,8 +89,8 @@ OrderSummary::OrderSummary(const QJsonArray &dataArray, QWidget *parent)
     });
 
     // Keep only top 10 items
-    if (sortedItemSales.size() > 20) {
-        sortedItemSales = sortedItemSales.mid(0, 20);
+    if (sortedItemSales.size() > 50) {
+        sortedItemSales = sortedItemSales.mid(0, 50);
     }
 
     QString formattedCount = QLocale(QLocale::English).toString(dataArray.size());
@@ -98,7 +98,7 @@ OrderSummary::OrderSummary(const QJsonArray &dataArray, QWidget *parent)
     QVBoxLayout *mainLayout = new QVBoxLayout(this);
     mainLayout->setSpacing(0);
 
-    QString titleString = "🔝 Top 10 Best-Selling Items | Total Order : " + formattedCount + " | CASH : Rp. " + QLocale(QLocale::English).toString(cashTotal, 'f', 0) +
+    QString titleString = "🔝 Top 50 Best-Selling Items | Total Order : " + formattedCount + " | CASH : Rp. " + QLocale(QLocale::English).toString(cashTotal, 'f', 0) +
                           " | QRIS : Rp. " + QLocale(QLocale::English).toString(qrTotal, 'f', 0) +
                           " | CARD : Rp. " + QLocale(QLocale::English).toString(cardTotal, 'f', 0) +
                           " | VOID : Rp. " + QLocale(QLocale::English).toString(voidTotal, 'f', 0) +
@@ -139,6 +139,7 @@ OrderSummary::OrderSummary(const QJsonArray &dataArray, QWidget *parent)
         );
 
     // Add table to layout
+    TouchUtils::enableItemViewScrolling(summaryTable);
     mainLayout->addWidget(summaryTable);
 
     // Step 5: Assign Layout

@@ -35,6 +35,8 @@ private slots:
     void onTabChanged(int index);
     void onDateChanged(const QDate &selectedDate);
     void onSettlementClicked();
+    void onDailyReportClicked();
+    void onSalesReportClicked();
 private:
     Ui::OrderScreen *ui;
     QTabWidget *tabWidget;

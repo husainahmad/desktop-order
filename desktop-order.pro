@@ -12,6 +12,7 @@ SOURCES += \
     brand.cpp \
     cacheutils.cpp \
     chain.cpp \
+    dailyreportscreen.cpp \
     loginscreen.cpp \
     main.cpp \
     mainwindow.cpp \
@@ -29,18 +30,21 @@ SOURCES += \
     product.cpp \
     productimage.cpp \
     productwidget.cpp \
+    salesreportscreen.cpp \
     setting.cpp \
     sku.cpp \
     skuwidget.cpp \
     splashscreen.cpp \
     store.cpp \
     toast.cpp \
+    tokenmanager.cpp \
     user.cpp
 
 HEADERS += \
     brand.h \
     cacheutils.h \
     chain.h \
+    dailyreportscreen.h \
     loginscreen.h \
     mainwindow.h \
     order.h \
@@ -57,12 +61,16 @@ HEADERS += \
     product.h \
     productimage.h \
     productwidget.h \
+    salesreportscreen.h \
+    screenutils.h \
     setting.h \
     sku.h \
     skuwidget.h \
     splashscreen.h \
     store.h \
     toast.h \
+    tokenmanager.h \
+    touchutils.h \
     user.h
 
 FORMS += \

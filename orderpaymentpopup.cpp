@@ -17,11 +17,14 @@
 #include <QRegularExpression>
 #include <QUrl>
 #include <orderprint.h>
+#include "tokenmanager.h"
+#include "screenutils.h"
+#include "touchutils.h"
 
 OrderPaymentPopup::OrderPaymentPopup(const QJsonObject &order, QTabWidget *tabWidget, QWidget *parent)
     : QDialog(parent), networkManager(new QNetworkAccessManager(this)), orderDetails(order), tabWidget(tabWidget) {
     setWindowTitle("Select Payment Method");
-    setFixedSize(750, 650);
+    setFixedSize(ScreenUtils::fittedSize(750, 650, 0.95, 0.92));
     setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::CustomizeWindowHint);
 
     locale = QLocale::English;
@@ -42,15 +45,15 @@ OrderPaymentPopup::OrderPaymentPopup(const QJsonObject &order, QTabWidget *tabWi
                 }
                 table {
                     width: 100%;
-                    min-width: 700px;
+                    min-width: 580px;
                     border-collapse: collapse;
                     border: 1px solid #ddd;
                 }
                 th, td {
                     border: 1px solid #ddd;
-                    padding: 12px;
+                    padding: 8px;
                     text-align: left;
-                    font-size: 14px;
+                    font-size: 13px;
                     white-space: nowrap;
                 }
                 th {
@@ -128,9 +131,10 @@ OrderPaymentPopup::OrderPaymentPopup(const QJsonObject &order, QTabWidget *tabWi
     totalHtmlWidget = new QTextBrowser(this);
     totalHtmlWidget->setHtml(table);
     totalHtmlWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    totalHtmlWidget->setMinimumWidth(600);  // Set a minimum width
+    totalHtmlWidget->setMinimumWidth(520);  // Set a minimum width
     totalHtmlWidget->setMaximumWidth(16777215);  // Ensure no limit
-    totalHtmlWidget->setFixedHeight(400);
+    totalHtmlWidget->setFixedHeight(qMin(400, ScreenUtils::availableHeight() / 2));
+    TouchUtils::enableTouchScrolling(totalHtmlWidget);
     mainLayout->addWidget(totalHtmlWidget);
 
     // Payment method selection
@@ -295,7 +299,7 @@ void OrderPaymentPopup::processPayment() {
     }
 
     // Load authentication token
-    QString authToken = configSetting.getValue("authToken").toString().trimmed();
+    QString authToken = TokenManager::instance().getAccessToken();
     if (authToken.isEmpty()) {
         qDebug() << "Auth token is empty!";
         QMessageBox::warning(this, "Error", "Authentication token is missing. Please log in.");

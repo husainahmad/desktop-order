@@ -38,7 +38,8 @@ SOURCES += \
     store.cpp \
     toast.cpp \
     tokenmanager.cpp \
-    user.cpp
+    user.cpp \
+    settingsdialog.cpp
 
 HEADERS += \
     brand.h \
@@ -64,6 +65,7 @@ HEADERS += \
     salesreportscreen.h \
     screenutils.h \
     setting.h \
+    settingsdialog.h \
     sku.h \
     skuwidget.h \
     splashscreen.h \

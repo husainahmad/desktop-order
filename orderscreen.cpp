@@ -9,6 +9,8 @@
 #include "cacheutils.h"
 #include "tokenmanager.h"
 #include "screenutils.h"
+#include "settingsdialog.h"
+#include "loginscreen.h"
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -99,6 +101,8 @@ OrderScreen::OrderScreen(QWidget *parent)
     QPushButton *dailyReportButton = new QPushButton("📊 Daily Report", this);
     QPushButton *salesReportButton = new QPushButton("📈 Sales Report", this);
     QPushButton *refreshButton = new QPushButton("🔄 Refresh", this);
+    QPushButton *settingsButton = new QPushButton("⚙ Settings", this);
+    QPushButton *logoutButton = new QPushButton("🚪 Logout", this);
 
     QSize buttonSize(200, 35);  // width, height
     addOrderButton->setMinimumSize(buttonSize);
@@ -106,6 +110,8 @@ OrderScreen::OrderScreen(QWidget *parent)
     dailyReportButton->setMinimumSize(buttonSize);
     salesReportButton->setMinimumSize(buttonSize);
     refreshButton->setMinimumSize(buttonSize);
+    settingsButton->setMinimumSize(buttonSize);
+    logoutButton->setMinimumSize(buttonSize);
 
     // Style the buttons
     QString buttonStyle = "QPushButton {"
@@ -123,6 +129,28 @@ OrderScreen::OrderScreen(QWidget *parent)
     salesReportButton->setStyleSheet(buttonStyle);
     refreshButton->setStyleSheet(buttonStyle);
 
+    // Settings button style (blue)
+    QString settingsBtnStyle = "QPushButton {"
+                               "background-color: #2196F3; color: white;"
+                               "border-radius: 10px; padding: 10px; font-size: 18px;"
+                               "border: 2px solid #1976D2;"
+                               "}"
+                               "QPushButton:hover {"
+                               "background-color: #1976D2;"
+                               "}";
+    settingsButton->setStyleSheet(settingsBtnStyle);
+
+    // Logout button style (red)
+    QString logoutBtnStyle = "QPushButton {"
+                             "background-color: #f44336; color: white;"
+                             "border-radius: 10px; padding: 10px; font-size: 18px;"
+                             "border: 2px solid #D32F2F;"
+                             "}"
+                             "QPushButton:hover {"
+                             "background-color: #D32F2F;"
+                             "}";
+    logoutButton->setStyleSheet(logoutBtnStyle);
+
     // Create a horizontal layout for the buttons
     QWidget *tabButtonWidget = new QWidget();
     QHBoxLayout *tabButtonLayout = new QHBoxLayout(tabButtonWidget);
@@ -134,6 +162,8 @@ OrderScreen::OrderScreen(QWidget *parent)
     tabButtonLayout->addWidget(dailyReportButton);
     tabButtonLayout->addWidget(salesReportButton);
     tabButtonLayout->addWidget(settlementButton);
+    tabButtonLayout->addWidget(settingsButton);
+    tabButtonLayout->addWidget(logoutButton);
     tabButtonLayout->addStretch();
 
     tabButtonWidget->setLayout(tabButtonLayout);
@@ -146,6 +176,8 @@ OrderScreen::OrderScreen(QWidget *parent)
     connect(settlementButton, &QPushButton::clicked, this, &OrderScreen::onSettlementClicked);
     connect(dailyReportButton, &QPushButton::clicked, this, &OrderScreen::onDailyReportClicked);
     connect(salesReportButton, &QPushButton::clicked, this, &OrderScreen::onSalesReportClicked);
+    connect(settingsButton, &QPushButton::clicked, this, &OrderScreen::onSettingsClicked);
+    connect(logoutButton, &QPushButton::clicked, this, &OrderScreen::onLogoutClicked);
     connect(refreshButton, &QPushButton::clicked, this, [this]() {
         CacheUtils::clearAppCache();
         fetchDataFromAPI();
@@ -317,6 +349,34 @@ void OrderScreen::onSalesReportClicked() {
     SalesReportScreen *salesReportScreen = new SalesReportScreen();
     salesReportScreen->setAttribute(Qt::WA_DeleteOnClose);
     salesReportScreen->show();
+}
+
+void OrderScreen::onSettingsClicked() {
+    SettingsDialog *dialog = new SettingsDialog(this);
+    dialog->exec();
+    delete dialog;
+}
+
+void OrderScreen::onLogoutClicked() {
+    QMessageBox msgBox(this);
+    msgBox.setWindowTitle("Logout");
+    msgBox.setText("Are you sure you want to logout?");
+    msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
+    msgBox.setDefaultButton(QMessageBox::No);
+
+    if (msgBox.exec() == QMessageBox::Yes) {
+        TokenManager::instance().clearTokens();
+        CacheUtils::clearAppCache();
+
+        // Close the order screen and emit signal to show login
+        QWidget *parent = this->parentWidget();
+        this->close();
+        if (parent) {
+            parent->hide();
+            LoginScreen *loginScreen = new LoginScreen();
+            loginScreen->show();
+        }
+    }
 }
 
 OrderScreen::~OrderScreen()

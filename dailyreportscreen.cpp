@@ -22,6 +22,7 @@
 DailyReportScreen::DailyReportScreen(QWidget *parent)
     : QWidget(parent)
     , tableWidget(new QTableWidget(this))
+    , orderVolumeTableWidget(new QTableWidget(this))
     , startDateEdit(new QDateEdit(this))
     , endDateEdit(new QDateEdit(this))
     , networkManager(new QNetworkAccessManager(this))
@@ -103,12 +104,38 @@ DailyReportScreen::DailyReportScreen(QWidget *parent)
 
     mainLayout->addWidget(tableWidget);
 
+    QLabel *orderVolumeTitleLabel = new QLabel("📈 Order Volume", this);
+    orderVolumeTitleLabel->setStyleSheet("font-size: 16px; font-weight: bold; color: white; margin-top: 10px;");
+    orderVolumeTitleLabel->setAlignment(Qt::AlignCenter);
+    mainLayout->addWidget(orderVolumeTitleLabel);
+
+    orderVolumeTableWidget->setColumnCount(3);
+    orderVolumeTableWidget->setHorizontalHeaderLabels({"Total Orders", "Peak Time Orders", "Non Peak Time Orders"});
+    orderVolumeTableWidget->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    orderVolumeTableWidget->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    orderVolumeTableWidget->setStyleSheet(
+        "QHeaderView::section {"
+        "   background-color: black;"
+        "   color: white;"
+        "   font-weight: bold;"
+        "   font-size: 14px;"
+        "   padding: 6px;"
+        "   border: 1px solid #444;"
+        "}"
+        );
+    orderVolumeTableWidget->setMaximumHeight(120);
+    TouchUtils::enableItemViewScrolling(orderVolumeTableWidget);
+
+    mainLayout->addWidget(orderVolumeTableWidget);
+
     setLayout(mainLayout);
 
     connect(loadButton, &QPushButton::clicked, this, &DailyReportScreen::fetchDailyReport);
+    connect(loadButton, &QPushButton::clicked, this, &DailyReportScreen::fetchOrderVolumeReport);
     connect(backButton, &QPushButton::clicked, this, &DailyReportScreen::close);
 
     fetchDailyReport();
+    fetchOrderVolumeReport();
 }
 
 void DailyReportScreen::fetchDailyReport() {
@@ -215,6 +242,54 @@ void DailyReportScreen::parseDailyReportResponse(const QByteArray &responseData)
         QTableWidgetItem *item = footerItems[col];
         item->setBackground(QColor(240, 240, 240));
         tableWidget->setItem(footerRow, col, item);
+    }
+}
+
+void DailyReportScreen::fetchOrderVolumeReport() {
+    QString startDateTime = startDateEdit->date().toString("yyyy-MM-dd") + "T00:00:00";
+    QString endDateTime = endDateEdit->date().toString("yyyy-MM-dd") + "T23:59:59";
+
+    QString volumeUrl = settingConfig.getApiEndpoint("reports", "order-volume");
+    QUrl url(volumeUrl);
+    QUrlQuery query;
+    query.addQueryItem("start", startDateTime);
+    query.addQueryItem("end", endDateTime);
+    url.setQuery(query);
+
+    QNetworkRequest request(url);
+    request.setRawHeader("Authorization", "Bearer " + TokenManager::instance().getAccessToken().toUtf8());
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+
+    QNetworkReply* reply = networkManager->get(request);
+
+    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+        if (reply->error() == QNetworkReply::NoError) {
+            parseOrderVolumeReportResponse(reply->readAll());
+        } else {
+            qDebug() << "Order Volume API error:" << reply->errorString();
+            QMessageBox::warning(this, "Order Volume Error", "Failed to fetch order volume report.");
+        }
+        reply->deleteLater();
+    });
+}
+
+void DailyReportScreen::parseOrderVolumeReportResponse(const QByteArray &responseData) {
+    QJsonDocument doc = QJsonDocument::fromJson(responseData);
+    if (!doc.isObject()) {
+        return;
+    }
+
+    QJsonObject dataObj = doc.object()["data"].toObject();
+
+    orderVolumeTableWidget->setRowCount(1);
+    orderVolumeTableWidget->setItem(0, 0, new QTableWidgetItem(locale.toString(dataObj["totalOrders"].toInt())));
+    orderVolumeTableWidget->setItem(0, 1, new QTableWidgetItem(locale.toString(dataObj["peakTimeOrders"].toInt())));
+    orderVolumeTableWidget->setItem(0, 2, new QTableWidgetItem(locale.toString(dataObj["nonPeakTimeOrders"].toInt())));
+
+    for (int col = 0; col < orderVolumeTableWidget->columnCount(); ++col) {
+        QTableWidgetItem *item = orderVolumeTableWidget->item(0, col);
+        item->setTextAlignment(Qt::AlignCenter | Qt::AlignVCenter);
+        item->setBackground(QColor(240, 240, 240));
     }
 }
 

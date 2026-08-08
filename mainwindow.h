@@ -22,6 +22,8 @@ public:
 
 private slots:
     void openOrderScreen();
+    void openSettings();
+    void logout();
 
 private:
     Ui::MainWindow *ui;

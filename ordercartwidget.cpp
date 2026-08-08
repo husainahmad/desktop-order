@@ -21,7 +21,7 @@ OrderCartWidget::OrderCartWidget(OrderItem orderItem, OrderForm *orderForm, QWid
     layout->setContentsMargins(10, 10, 10, 10);
 
     QLabel *productNameLabel = new QLabel(orderItem.productName, this);
-    productNameLabel->setStyleSheet("font-weight: bold; font-size: 14px;");
+    productNameLabel->setStyleSheet("font-weight: bold; font-size: 14px; background-color: #F0F4F0; padding: 8px 12px;");
 
     QVBoxLayout *skuLayout = new QVBoxLayout();
     orderCartSkuWidget(orderItem, skuLayout);
@@ -43,26 +43,27 @@ void OrderCartWidget::orderCartSkuWidget(OrderItem &orderItem, QVBoxLayout *&sku
         buttonLayout->setContentsMargins(5, 5, 5, 5);
 
         QLabel *skuNameLabel = new QLabel(orderItemSku.skuName, this);
+        skuNameLabel->setStyleSheet("font-size: 15px; font-weight: bold;");
         QLabel *skuPriceLabel = new QLabel("Rp. " + locale.toString(orderItemSku.subTotal, 'f', 0), this);
-        skuPriceLabel->setStyleSheet("color: #28a745; font-size: 12px; font-weight: bold;");
+        skuPriceLabel->setStyleSheet("color: #28a745; font-size: 14px; font-weight: bold;");
 
         QPushButton *minusButton = new QPushButton("-", this);
         QPushButton *plusButton = new QPushButton("+", this);
         QLabel *totalLabel = new QLabel(locale.toString(orderItemSku.quantity), this);
 
-        totalLabel->setFixedSize(30, 40);
+        totalLabel->setFixedSize(40, 44);
         totalLabel->setAlignment(Qt::AlignCenter);
-        totalLabel->setStyleSheet("font-size: 14px; font-weight: bold;");
+        totalLabel->setStyleSheet("font-size: 16px; font-weight: bold;");
 
         // Style buttons for modern look
         QString buttonStyle =
             "QPushButton {"
             "   background-color: #007bff;"
             "   color: white;"
-            "   font-size: 16px;"
+            "   font-size: 18px;"
             "   border-radius: 10px;"
-            "   width: 30px;"
-            "   height: 30px;"
+            "   width: 36px;"
+            "   height: 36px;"
             "}"
             "QPushButton:hover { background-color: #0056b3; }"
             "QPushButton:pressed { background-color: #004494; }";

@@ -18,11 +18,14 @@ public:
 
 private slots:
     void fetchDailyReport();
+    void fetchOrderVolumeReport();
 
 private:
     void parseDailyReportResponse(const QByteArray &responseData);
+    void parseOrderVolumeReportResponse(const QByteArray &responseData);
 
     QTableWidget *tableWidget;
+    QTableWidget *orderVolumeTableWidget;
     QDateEdit *startDateEdit;
     QDateEdit *endDateEdit;
     QNetworkAccessManager *networkManager;

@@ -124,18 +124,17 @@ void OrderPrint::sendToReceiptPrinter() {
     #endif
 
 }
-
 void OrderPrint::sendToKitchenPrinter() {
     // 1. Group items by category
     QMap<int, QList<QJsonObject>> categoryMap;
     QJsonArray orderDetailsArray = orderDetails["orderDetails"].toArray();
     for (const QJsonValue &itemValue : orderDetailsArray) {
         QJsonObject itemObj = itemValue.toObject();
-        int categoryId = itemObj["categoryId"].toInt(); // Assuming exists
+        int categoryId = itemObj["categoryId"].toInt();
         categoryMap[categoryId].append(itemObj);
     }
 
-    // 2. Print each category group once (default)
+    // 2. Print each category group
     for (auto it = categoryMap.begin(); it != categoryMap.end(); ++it) {
         const QList<QJsonObject> &items = it.value();
 
@@ -159,11 +158,12 @@ void OrderPrint::sendToKitchenPrinter() {
         receiptData.append("Item                Qty\n");
         receiptData.append("--------------------------------\n");
 
+        // Group by product name
         for (const QJsonObject &itemObj : items) {
             QString productName = itemObj["productName"].toString();
             QJsonArray skus = itemObj["orderDetailSkus"].toArray();
-;
-            // Print product line
+
+            // Print product line as header
             QString line = QString("%1\n")
                                .arg(productName.leftJustified(18));
             receiptData.append(line.toUtf8());
@@ -171,7 +171,7 @@ void OrderPrint::sendToKitchenPrinter() {
             // Print SKU details indented
             for (const QJsonValue &skuVal : skus) {
                 QJsonObject skuObj = skuVal.toObject();
-                QString skuName = skuObj["skuName"].toString(); // Adjust based on your actual key
+                QString skuName = skuObj["skuName"].toString();
                 double skuQty = skuObj["quantity"].toDouble();
 
                 QString skuLine = QString("  - %1 %2x\n")
@@ -193,12 +193,12 @@ void OrderPrint::sendToKitchenPrinter() {
                     qDebug() << "Failed to send data to printer on Windows.";
                 }
         #else
-                // Send to printer
-                QProcess process;
-                process.start("lp", QStringList() << "-d" << settingConfig.getApiEndpoint("printer", "kitchen") << "-o" << "raw");
-                process.write(receiptData);
-                process.closeWriteChannel();
-                process.waitForFinished();
+            // Send to printer
+            QProcess process;
+            process.start("lp", QStringList() << "-d" << settingConfig.getApiEndpoint("printer", "kitchen") << "-o" << "raw");
+            process.write(receiptData);
+            process.closeWriteChannel();
+            process.waitForFinished();
         #endif
     }
 }

@@ -7,10 +7,10 @@
 #include <QTabWidget>
 #include <QNetworkAccessManager>
 #include <QSettings>
+#include <QGridLayout>
+#include <QButtonGroup>
 #include "setting.h"
 
-class QRadioButton;
-class QLineEdit;
 class QPushButton;
 class QTextBrowser;
 class QLocale;
@@ -24,24 +24,40 @@ public:
 
 private slots:
     void processPayment();
-    void updateUI();
-    void updateCashLabel(const QString &text);
+    void selectPaymentMethod(int id);
+    void onCashButtonClicked();
+    void clearCashAmount();
+    void setExactCash();
+    void payCash();
 
 private:
+    void updateCashDisplay();
+
     QNetworkAccessManager *networkManager;
     QJsonObject orderDetails;
-    QRadioButton *qrPayment;
-    QRadioButton *cardPayment;
-    QRadioButton *cashPayment;
-    QLineEdit *cashAmountInput;
+    QButtonGroup *paymentGroup;
+    QPushButton *qrPaymentBtn;
+    QPushButton *cardPaymentBtn;
+    QPushButton *cashPaymentBtn;
     QTextBrowser *totalHtmlWidget;
     QPushButton *payButton;
     QPushButton *cancelButton;
     QLocale locale;
-    QLabel *cashAmountLabel;
     double totalOrder;
     QTabWidget *tabWidget;
     Setting configSetting;
+
+    // Cash payment panel widgets
+    QWidget *cashPanel;
+    QLabel *cashTotalText;
+    QLabel *cashReceivedText;
+    QLabel *cashChangeText;
+    QGridLayout *cashGrid;
+    QPushButton *bayarButton;
+    QPushButton *clearButton;
+    QPushButton *exactButton;
+    double cashGiven;
+    double cashChange;
 };
 
 #endif // ORDERPAYMENTPOPUP_H

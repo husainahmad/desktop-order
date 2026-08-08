@@ -37,6 +37,8 @@ private slots:
     void onSettlementClicked();
     void onDailyReportClicked();
     void onSalesReportClicked();
+    void onSettingsClicked();
+    void onLogoutClicked();
 private:
     Ui::OrderScreen *ui;
     QTabWidget *tabWidget;
@@ -44,6 +46,8 @@ private:
     QWidget *firstTab;
     QLabel *titleLabel;
     QPushButton *summaryButton;
+    QPushButton *settingsButton;
+    QPushButton *logoutButton;
 
     // Input fields for order details
     QLineEdit *storeIdInput;

@@ -9,13 +9,14 @@ CONFIG += c++17
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
+    apiclient.cpp \
     brand.cpp \
+    busyindicator.cpp \
     cacheutils.cpp \
     chain.cpp \
     dailyreportscreen.cpp \
     loginscreen.cpp \
     main.cpp \
-    mainwindow.cpp \
     order.cpp \
     ordercartwidget.cpp \
     orderform.cpp \
@@ -32,22 +33,22 @@ SOURCES += \
     productwidget.cpp \
     salesreportscreen.cpp \
     setting.cpp \
+    settingscreen.cpp \
     sku.cpp \
     skuwidget.cpp \
-    splashscreen.cpp \
     store.cpp \
     toast.cpp \
     tokenmanager.cpp \
-    user.cpp \
-    settingsdialog.cpp
+    user.cpp
 
 HEADERS += \
+    apiclient.h \
     brand.h \
+    busyindicator.h \
     cacheutils.h \
     chain.h \
     dailyreportscreen.h \
     loginscreen.h \
-    mainwindow.h \
     order.h \
     ordercartwidget.h \
     orderform.h \
@@ -57,6 +58,7 @@ HEADERS += \
     orderpopupwindow.h \
     orderprint.h \
     orderscreen.h \
+    ordertabbutton.h \
     ordersummary.h \
     ordertablewidget.h \
     product.h \
@@ -65,10 +67,9 @@ HEADERS += \
     salesreportscreen.h \
     screenutils.h \
     setting.h \
-    settingsdialog.h \
+    settingscreen.h \
     sku.h \
     skuwidget.h \
-    splashscreen.h \
     store.h \
     toast.h \
     tokenmanager.h \
@@ -77,15 +78,13 @@ HEADERS += \
 
 FORMS += \
     loginscreen.ui \
-    mainwindow.ui \
     ordercartwidget.ui \
     orderform.ui \
     orderscreen.ui \
     ordersummary.ui \
     ordertablewidget.ui \
     productwidget.ui \
-    skuwidget.ui \
-    splashscreen.ui
+    skuwidget.ui
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin

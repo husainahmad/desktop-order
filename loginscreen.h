@@ -3,8 +3,6 @@
 
 #include <QWidget>
 
-#include <QNetworkAccessManager>
-#include <QNetworkReply>
 #include <QLineEdit>
 #include <QPushButton>
 #include <setting.h>
@@ -27,7 +25,6 @@ private slots:
 
 private:
     Ui::LoginScreen *ui;
-    QNetworkAccessManager *networkManager;
     QLineEdit *usernameEdit;
     QLineEdit *passwordEdit;
     QPushButton *loginButton;

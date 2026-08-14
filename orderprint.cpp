@@ -7,6 +7,7 @@
 
 #include <QLocale>
 #include <QTimeZone>
+#include <QTcpSocket>
 #ifdef Q_OS_WIN
 #include <windows.h>
 #endif
@@ -15,14 +16,54 @@ OrderPrint::OrderPrint(const QJsonObject &order) : orderDetails(order) {
     locale = QLocale::English;
 }
 
+bool OrderPrint::sendRaw(const QString &printerName, const QByteArray &data) {
+    Setting config;
+    QString type = config.getValue("printer/type", "system").toString();
+
+    if (type == "network") {
+        QString address = config.getValue("printer/address").toString();
+        int port = config.getValue("printer/port", 9100).toInt();
+        if (address.isEmpty()) {
+            qWarning() << "Printer: network address not configured.";
+            return false;
+        }
+
+        QTcpSocket socket;
+        socket.connectToHost(address, port);
+        if (!socket.waitForConnected(3000)) {
+            qWarning() << "Printer: connection failed to" << address << ":" << socket.errorString();
+            return false;
+        }
+        socket.write(data);
+        socket.waitForBytesWritten(3000);
+        socket.disconnectFromHost();
+        socket.waitForDisconnected(1000);
+        return true;
+    }
+
+#ifdef Q_OS_WIN
+    OrderPrint dummy(QJsonObject());
+    return dummy.sendRawDataToPrinter(printerName, data);
+#else
+    QProcess process;
+    process.start("lp", QStringList() << "-d" << printerName << "-o" << "raw");
+    process.write(data);
+    process.closeWriteChannel();
+    process.waitForFinished();
+    return process.exitStatus() == QProcess::NormalExit;
+#endif
+}
+
 void OrderPrint::sendToReceiptPrinter() {
     QByteArray receiptData;
+
+    QString brandName = settingConfig.getValue("userDetail.brand.name", "Kopi Harmoni").toString();
 
     // ESC/POS: Reset, Center
     receiptData.append("\x1B\x40");     // Reset printer
     receiptData.append("\x1B\x61\x01"); // Center text
 
-    receiptData.append(" Kopi Harmoni \n");
+    receiptData.append(" " + brandName.toUtf8() + " \n");
     receiptData.append("==============================\n");
     receiptData.append("\x1B\x40");
 
@@ -110,18 +151,9 @@ void OrderPrint::sendToReceiptPrinter() {
     receiptData.append("\n\n\n");         // Add spacing
     receiptData.append("\x1D\x56\x01");   // Cut paper
 
-    #ifdef Q_OS_WIN
-        if (!sendRawDataToPrinter(settingConfig.getApiEndpoint("printer", "receipt"), receiptData)) {
-            qDebug() << "Failed to send data to printer on Windows.";
-        }
-    #else
-        // Send to printer
-        QProcess process;
-        process.start("lp", QStringList() << "-d" << settingConfig.getApiEndpoint("printer", "receipt") << "-o" << "raw");
-        process.write(receiptData);
-        process.closeWriteChannel();
-        process.waitForFinished();
-    #endif
+    if (!sendRaw(settingConfig.getApiEndpoint("printer", "receipt"), receiptData)) {
+        qDebug() << "Failed to send data to receipt printer.";
+    }
 
 }
 void OrderPrint::sendToKitchenPrinter() {
@@ -134,6 +166,8 @@ void OrderPrint::sendToKitchenPrinter() {
         categoryMap[categoryId].append(itemObj);
     }
 
+    QString brandName = settingConfig.getValue("userDetail.brand.name", "Kopi Harmoni").toString();
+
     // 2. Print each category group
     for (auto it = categoryMap.begin(); it != categoryMap.end(); ++it) {
         const QList<QJsonObject> &items = it.value();
@@ -141,7 +175,7 @@ void OrderPrint::sendToKitchenPrinter() {
         QByteArray receiptData;
         receiptData.append("\x1B\x40");     // Reset
         receiptData.append("\x1B\x61\x01"); // Center
-        receiptData.append(" Kopi Harmoni - KP \n");
+        receiptData.append(" " + brandName.toUtf8() + " - KP \n");
         receiptData.append("\x1B\x40");
         receiptData.append("\x1B\x61\x00"); // Left align
         receiptData.append(" Customer: " + orderDetails["customerName"].toString().toUtf8() + "\n");
@@ -188,18 +222,9 @@ void OrderPrint::sendToKitchenPrinter() {
         receiptData.append("\n\n\n");       // Spacing
         receiptData.append("\x1D\x56\x01"); // Cut paper
 
-        #ifdef Q_OS_WIN
-                if (!sendRawDataToPrinter(settingConfig.getApiEndpoint("printer", "kitchen"), receiptData)) {
-                    qDebug() << "Failed to send data to printer on Windows.";
-                }
-        #else
-            // Send to printer
-            QProcess process;
-            process.start("lp", QStringList() << "-d" << settingConfig.getApiEndpoint("printer", "kitchen") << "-o" << "raw");
-            process.write(receiptData);
-            process.closeWriteChannel();
-            process.waitForFinished();
-        #endif
+        if (!sendRaw(settingConfig.getApiEndpoint("printer", "kitchen"), receiptData)) {
+            qDebug() << "Failed to send data to kitchen printer.";
+        }
     }
 }
 
@@ -244,18 +269,9 @@ void OrderPrint::sendSettlementToReceiptPrinter() {
     receiptData.append("\n\n\n");
     receiptData.append("\x1D\x56\x01"); // Cut paper
 
-    #ifdef Q_OS_WIN
-        if (!sendRawDataToPrinter(settingConfig.getApiEndpoint("printer", "receipt"), receiptData)) {
-            qDebug() << "Failed to send data to printer on Windows.";
-        }
-    #else
-    // Send to printer
-        QProcess process;
-        process.start("lp", QStringList() << "-d" << settingConfig.getApiEndpoint("printer", "receipt") << "-o" << "raw");
-        process.write(receiptData);
-        process.closeWriteChannel();
-        process.waitForFinished();
-    #endif
+    if (!sendRaw(settingConfig.getApiEndpoint("printer", "receipt"), receiptData)) {
+        qDebug() << "Failed to send data to receipt printer.";
+    }
 }
 
 #ifdef Q_OS_WIN

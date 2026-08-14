@@ -1,16 +1,37 @@
 #include "loginscreen.h"
-#include "mainwindow.h"
+#include "screenutils.h"
+#include "apiclient.h"
+#include "busyindicator.h"
 
 #include <QApplication>
-#include <QSplashScreen>
-#include <QThread>
-
-
-#include <QApplication>
-#include <QSplashScreen>
-#include <QTimer>
+#include <QFile>
+#include <QFont>
+#include <QTextStream>
+#include <QDateTime>
 
 QTextStream* gLogStream = nullptr;
+
+namespace {
+const qint64 kMaxLogSize = 2 * 1024 * 1024; // 2 MB
+int gLogWriteCounter = 0;
+
+void rotateLogIfNeeded(QFile *file, QTextStream *stream) {
+    if (file->size() < kMaxLogSize) {
+        return;
+    }
+
+    stream->flush();
+    file->close();
+
+    const QString logPath = file->fileName();
+    QFile::remove(logPath + ".old");
+    QFile::rename(logPath, logPath + ".old");
+
+    if (file->open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text)) {
+        gLogStream->setDevice(file);
+    }
+}
+}
 
 void myMessageHandler(QtMsgType type, const QMessageLogContext &, const QString &msg) {
     if (!gLogStream) return;
@@ -27,14 +48,18 @@ void myMessageHandler(QtMsgType type, const QMessageLogContext &, const QString 
     QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss");
     *gLogStream << "[" << timestamp << "][" << level << "] " << msg << "\n";
     gLogStream->flush();
+
+    if (++gLogWriteCounter % 200 == 0) {
+        rotateLogIfNeeded(qobject_cast<QFile *>(gLogStream->device()),
+                          gLogStream);
+    }
 }
 
 void installLogger() {
-    static QFile *logFile = new QFile("log.txt");  // Creates the file in app working directory
+    static QFile *logFile = new QFile("log.txt");
 
-    // Open in append + text mode. This will CREATE the file if it doesn't exist.
     if (!logFile->open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text)) {
-        qWarning() << "❌ Failed to open or create log.txt";
+        qWarning() << "Failed to open or create log.txt";
         return;
     }
 
@@ -46,29 +71,41 @@ void installLogger() {
 
 int main(int argc, char *argv[])
 {
-    QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
     QApplication app(argc, argv);
 
-    installLogger(); // Enable file logging
+    installLogger();
 
-    qDebug() << "✅ Application started in release mode with debug log enabled";
+    qDebug() << "Application started";
+    qDebug() << "Screen scale factor:" << ScreenUtils::scaleFactor();
 
+    QFont baseFont = app.font();
+    qreal pointSize = baseFont.pointSizeF();
+    if (pointSize > 0) {
+        baseFont.setPointSizeF(pointSize * ScreenUtils::scaleFactor());
+    } else {
+        baseFont.setPixelSize(qRound(13 * ScreenUtils::scaleFactor()));
+    }
+    app.setFont(baseFont);
 
-    // Initialize splash screen with an image
-    QPixmap pixmap(":/assets/images/splash.jpg");  // Ensure you have a valid image path
-    QSplashScreen splash(pixmap);
-    splash.show();
+    QFile themeFile(":/theme.qss");
+    if (themeFile.open(QFile::ReadOnly | QFile::Text)) {
+        app.setStyleSheet(ScreenUtils::scalePx(QString::fromUtf8(themeFile.readAll())));
+        themeFile.close();
+    } else {
+        qWarning() << "Failed to load theme.qss";
+    }
 
-    // Process UI events while splash is visible
-    QCoreApplication::processEvents();
+    LoginScreen loginScreen;
+    loginScreen.show();
 
-    // Simulate loading time (non-blocking)
-    QTimer::singleShot(2000, [&]() {
-        LoginScreen *loginScreen = new LoginScreen();
-        loginScreen->show();
-        splash.finish(loginScreen);
-    });
+    QObject::connect(&ApiClient::instance(), &ApiClient::busyChanged,
+                     [](bool busy) {
+                         if (busy) {
+                             BusyIndicator::show();
+                         } else {
+                             BusyIndicator::hide();
+                         }
+                     });
 
     return app.exec();
 }
-

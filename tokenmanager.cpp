@@ -6,8 +6,6 @@
 #include <QJsonObject>
 #include <QJsonParseError>
 #include <QDateTime>
-#include <QEventLoop>
-#include <QTimer>
 #include <QDebug>
 
 TokenManager& TokenManager::instance() {
@@ -18,20 +16,7 @@ TokenManager& TokenManager::instance() {
 TokenManager::TokenManager() = default;
 
 QString TokenManager::getAccessToken() {
-    QString accessToken = settingConfig.getValue("authToken").toString();
-    if (accessToken.isEmpty()) {
-        return QString();
-    }
-
-    if (isAccessTokenExpired(accessToken)) {
-        if (refreshAccessToken()) {
-            return settingConfig.getValue("authToken").toString();
-        }
-        clearTokens();
-        return QString();
-    }
-
-    return accessToken;
+    return settingConfig.getValue("authToken").toString();
 }
 
 QString TokenManager::getRefreshToken() {
@@ -72,58 +57,52 @@ bool TokenManager::isAccessTokenExpired(const QString &accessToken) const {
     return QDateTime::currentSecsSinceEpoch() >= static_cast<qint64>(exp) - bufferSeconds;
 }
 
-bool TokenManager::refreshAccessToken() {
-    QString refreshToken = getRefreshToken();
+void TokenManager::refreshToken(const std::function<void(bool)> &callback) {
+    const QString refreshToken = getRefreshToken();
     if (refreshToken.isEmpty()) {
         qWarning() << "TokenManager: No refresh token available.";
-        return false;
+        clearTokens();
+        if (callback) callback(false);
+        return;
     }
 
-    QString refreshUrl = settingConfig.getApiEndpoint("auth", "refresh-token");
+    const QString refreshUrl = settingConfig.getApiEndpoint("auth", "refresh-token");
     if (refreshUrl.isEmpty()) {
         qWarning() << "TokenManager: Refresh endpoint not configured.";
-        return false;
+        if (callback) callback(false);
+        return;
     }
 
     QNetworkRequest request{QUrl(refreshUrl)};
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
 
     QNetworkReply *reply = networkManager.post(request, refreshToken.toUtf8());
-
-    QEventLoop loop;
-    QTimer timer;
-    timer.setSingleShot(true);
-    QObject::connect(&timer, &QTimer::timeout, &loop, &QEventLoop::quit);
-    QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
-    timer.start(10000);
-
-    loop.exec();
-
-    if (!timer.isActive()) {
-        reply->abort();
+    connect(reply, &QNetworkReply::finished, this, [this, reply, callback]() {
+        const bool success = reply->error() == QNetworkReply::NoError;
+        const QString errorString = reply->errorString();
         reply->deleteLater();
-        qWarning() << "TokenManager: Refresh request timed out.";
-        return false;
-    }
-    timer.stop();
 
-    bool refreshed = false;
-    if (reply->error() == QNetworkReply::NoError) {
+        if (!success) {
+            qWarning() << "TokenManager: Refresh request failed:" << errorString;
+            clearTokens();
+            if (callback) callback(false);
+            return;
+        }
+
         QJsonParseError parseError;
         QJsonDocument doc = QJsonDocument::fromJson(reply->readAll(), &parseError);
         if (parseError.error == QJsonParseError::NoError && doc.isObject()) {
             QJsonObject obj = doc.object();
-            QString newAccessToken = obj["accessToken"].toString();
-            QString newRefreshToken = obj["refreshToken"].toString();
+            const QString newAccessToken = obj["accessToken"].toString();
+            const QString newRefreshToken = obj["refreshToken"].toString();
             if (!newAccessToken.isEmpty()) {
                 setTokens(newAccessToken, newRefreshToken);
-                refreshed = true;
+                if (callback) callback(true);
+                return;
             }
         }
-    } else {
-        qWarning() << "TokenManager: Refresh request failed:" << reply->errorString();
-    }
 
-    reply->deleteLater();
-    return refreshed;
+        clearTokens();
+        if (callback) callback(false);
+    });
 }

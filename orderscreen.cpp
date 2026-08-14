@@ -1,5 +1,6 @@
 #include "orderscreen.h"
 #include "orderform.h"
+#include "ordertabbutton.h"
 #include "ui_orderscreen.h"
 #include "ordersummary.h"
 #include "ordertablewidget.h"
@@ -9,18 +10,18 @@
 #include "cacheutils.h"
 #include "tokenmanager.h"
 #include "screenutils.h"
-#include "settingsdialog.h"
+#include "apiclient.h"
+#include "settingscreen.h"
 #include "loginscreen.h"
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QPushButton>
 #include <QLabel>
+#include <QPixmap>
+#include <QDateTime>
 #include <QTableWidget>
 #include <QHeaderView>
-#include <QSettings>
-#include <QNetworkRequest>
-#include <QNetworkReply>
 #include <QJsonDocument>
 #include <QJsonArray>
 #include <QMessageBox>
@@ -29,8 +30,7 @@
 
 OrderScreen::OrderScreen(QWidget *parent)
     : QWidget(parent)
-    , ui(new Ui::OrderScreen),
-    networkManager(new QNetworkAccessManager(this))
+    , ui(new Ui::OrderScreen)
 {
     ui->setupUi(this);
 
@@ -40,42 +40,56 @@ OrderScreen::OrderScreen(QWidget *parent)
     resize(ScreenUtils::fittedSize(1280, 800, 1.0, 1.0));
     setMinimumSize(1024, 640);
 
-    // Create main layout
     QVBoxLayout *mainLayout = new QVBoxLayout(this);
+    mainLayout->setContentsMargins(16, 16, 16, 16);
+    mainLayout->setSpacing(12);
 
-    // Create a header section
+    // ======================= Header bar =======================
     QWidget *headerWidget = new QWidget(this);
+    headerWidget->setObjectName("headerBar");
+    headerWidget->setFixedHeight(ScreenUtils::px(76));
     QHBoxLayout *headerLayout = new QHBoxLayout(headerWidget);
-    headerLayout->setContentsMargins(10, 10, 10, 10);
+    headerLayout->setContentsMargins(24, 12, 24, 12);
+    headerLayout->setSpacing(14);
 
-    headerLayout->addStretch();  // Pushes everything to the left
-    headerWidget->setLayout(headerLayout);
+    QLabel *headerLogo = new QLabel(headerWidget);
+    QPixmap headerLogoPixmap(":/assets/images/pizza.png");
+    headerLogo->setPixmap(headerLogoPixmap.scaled(ScreenUtils::px(44), ScreenUtils::px(44), Qt::KeepAspectRatio, Qt::SmoothTransformation));
+    headerLogo->setFixedSize(ScreenUtils::px(44), ScreenUtils::px(44));
 
-    // Add header to the main layout
+    QWidget *brandBox = new QWidget(headerWidget);
+    QVBoxLayout *brandBoxLayout = new QVBoxLayout(brandBox);
+    brandBoxLayout->setContentsMargins(0, 0, 0, 0);
+    brandBoxLayout->setSpacing(2);
+
+    QString brandName = settingConfig.getValue("userDetail.brand.name", "Pizza").toString();
+    QString storeName = settingConfig.getValue("userDetail.store.name", "My Store").toString();
+    QLabel *titleLabel = new QLabel(brandName + " Order", brandBox);
+    titleLabel->setObjectName("headerTitle");
+    QLabel *subLabel = new QLabel(storeName, brandBox);
+    subLabel->setObjectName("headerSub");
+    brandBoxLayout->addWidget(titleLabel);
+    brandBoxLayout->addWidget(subLabel);
+
+    headerLayout->addWidget(headerLogo);
+    headerLayout->addWidget(brandBox);
+    headerLayout->addStretch();
+
+    QLabel *dateTimeLabel = new QLabel(
+        QDateTime::currentDateTime().toString("dddd, dd MMMM yyyy  |  HH:mm"), headerWidget);
+    dateTimeLabel->setObjectName("headerMeta");
+    headerLayout->addWidget(dateTimeLabel);
+
+    logoutButton = new QPushButton("Logout", headerWidget);
+    logoutButton->setObjectName("navButton");
+    logoutButton->setFixedHeight(ScreenUtils::px(38));
+    headerLayout->addWidget(logoutButton);
+
     mainLayout->addWidget(headerWidget);
 
-    // Create QTabWidget
+    // ======================= Tabs =======================
     tabWidget = new QTabWidget(this);
-    tabWidget->setStyleSheet(
-        "QTabBar::tab {"
-        "   height: 25px;"
-        "   width: 120px;"
-        "   font-size: 16px;"
-        "   padding: 10px;"
-        "   background-color: #007bff;"
-        "   color: white;"
-        "   border-radius: 5px;"
-        "}"
-        "QTabBar::tab:selected {"
-        "   background-color: #0056b3;"
-        "   font-weight: bold;"
-        "}"
-        "QTabBar::tab:hover {"
-        "   background-color: #3399ff;"
-        "}"
-        );
-
-    mainLayout->addWidget(tabWidget);
+    mainLayout->addWidget(tabWidget, 1);
 
     firstTab = new QWidget();
     QVBoxLayout *firstTabLayout = new QVBoxLayout(firstTab);
@@ -95,83 +109,51 @@ OrderScreen::OrderScreen(QWidget *parent)
 
     tabWidget->addTab(firstTab, "Orders");
 
-    // Buttons for adding and removing tabs
-    QPushButton *addOrderButton = new QPushButton("➕ Add Order", this);
-    QPushButton *settlementButton = new QPushButton("💰 Settlement", this);
-    QPushButton *dailyReportButton = new QPushButton("📊 Daily Report", this);
-    QPushButton *salesReportButton = new QPushButton("📈 Sales Report", this);
-    QPushButton *refreshButton = new QPushButton("🔄 Refresh", this);
-    QPushButton *settingsButton = new QPushButton("⚙ Settings", this);
-    QPushButton *logoutButton = new QPushButton("🚪 Logout", this);
+    // ======================= Action bar =======================
+    QPushButton *addOrderButton = new QPushButton("Add Order", this);
+    QPushButton *settlementButton = new QPushButton("Settlement", this);
+    QPushButton *dailyReportButton = new QPushButton("Daily Report", this);
+    QPushButton *salesReportButton = new QPushButton("Sales Report", this);
+    QPushButton *refreshButton = new QPushButton("Refresh", this);
+    settingsButton = new QPushButton("Settings", this);
 
-    QSize buttonSize(200, 35);  // width, height
+    addOrderButton->setObjectName("successButton");
+    settlementButton->setObjectName("primaryButton");
+    dailyReportButton->setObjectName("secondaryButton");
+    salesReportButton->setObjectName("secondaryButton");
+    refreshButton->setObjectName("secondaryButton");
+    settingsButton->setObjectName("ghostButton");
+
+    QSize buttonSize(ScreenUtils::px(180), ScreenUtils::px(44));
     addOrderButton->setMinimumSize(buttonSize);
     settlementButton->setMinimumSize(buttonSize);
     dailyReportButton->setMinimumSize(buttonSize);
     salesReportButton->setMinimumSize(buttonSize);
     refreshButton->setMinimumSize(buttonSize);
     settingsButton->setMinimumSize(buttonSize);
-    logoutButton->setMinimumSize(buttonSize);
+    addOrderButton->setFixedHeight(ScreenUtils::px(44));
+    settlementButton->setFixedHeight(ScreenUtils::px(44));
+    dailyReportButton->setFixedHeight(ScreenUtils::px(44));
+    salesReportButton->setFixedHeight(ScreenUtils::px(44));
+    refreshButton->setFixedHeight(ScreenUtils::px(44));
+    settingsButton->setFixedHeight(ScreenUtils::px(44));
 
-    // Style the buttons
-    QString buttonStyle = "QPushButton {"
-                          "background-color: #4CAF50; color: white;"
-                          "border-radius: 10px; padding: 10px; font-size: 18px;"
-                          "border: 2px solid #388E3C;"
-                          "}"
-                          "QPushButton:hover {"
-                          "background-color: #45a049;"
-                          "}";
-
-    addOrderButton->setStyleSheet(buttonStyle);
-    settlementButton->setStyleSheet(buttonStyle);
-    dailyReportButton->setStyleSheet(buttonStyle);
-    salesReportButton->setStyleSheet(buttonStyle);
-    refreshButton->setStyleSheet(buttonStyle);
-
-    // Settings button style (blue)
-    QString settingsBtnStyle = "QPushButton {"
-                               "background-color: #2196F3; color: white;"
-                               "border-radius: 10px; padding: 10px; font-size: 18px;"
-                               "border: 2px solid #1976D2;"
-                               "}"
-                               "QPushButton:hover {"
-                               "background-color: #1976D2;"
-                               "}";
-    settingsButton->setStyleSheet(settingsBtnStyle);
-
-    // Logout button style (red)
-    QString logoutBtnStyle = "QPushButton {"
-                             "background-color: #f44336; color: white;"
-                             "border-radius: 10px; padding: 10px; font-size: 18px;"
-                             "border: 2px solid #D32F2F;"
-                             "}"
-                             "QPushButton:hover {"
-                             "background-color: #D32F2F;"
-                             "}";
-    logoutButton->setStyleSheet(logoutBtnStyle);
-
-    // Create a horizontal layout for the buttons
     QWidget *tabButtonWidget = new QWidget();
     QHBoxLayout *tabButtonLayout = new QHBoxLayout(tabButtonWidget);
-    tabButtonLayout->setContentsMargins(20, 10, 20, 10);
-    tabButtonLayout->setSpacing(20);
-    tabButtonLayout->addStretch(); // Optional: center buttons
+    tabButtonLayout->setContentsMargins(0, 0, 0, 0);
+    tabButtonLayout->setSpacing(12);
     tabButtonLayout->addWidget(addOrderButton);
     tabButtonLayout->addWidget(refreshButton);
     tabButtonLayout->addWidget(dailyReportButton);
     tabButtonLayout->addWidget(salesReportButton);
     tabButtonLayout->addWidget(settlementButton);
-    tabButtonLayout->addWidget(settingsButton);
-    tabButtonLayout->addWidget(logoutButton);
     tabButtonLayout->addStretch();
+    tabButtonLayout->addWidget(settingsButton);
 
     tabButtonWidget->setLayout(tabButtonLayout);
 
-    // Add to main layout
     mainLayout->addWidget(tabButtonWidget);
 
-    // Connect button signals to slots
     connect(addOrderButton, &QPushButton::clicked, this, &OrderScreen::onOrderClicked);
     connect(settlementButton, &QPushButton::clicked, this, &OrderScreen::onSettlementClicked);
     connect(dailyReportButton, &QPushButton::clicked, this, &OrderScreen::onDailyReportClicked);
@@ -183,7 +165,7 @@ OrderScreen::OrderScreen(QWidget *parent)
         fetchDataFromAPI();
     });
 
-    connect(tabWidget, &QTabWidget::currentChanged, this, &OrderScreen::onTabChanged);  // 👈 Connect tab change event
+    connect(tabWidget, &QTabWidget::currentChanged, this, &OrderScreen::onTabChanged);
 
     setLayout(mainLayout);
 
@@ -191,31 +173,12 @@ OrderScreen::OrderScreen(QWidget *parent)
 }
 
 void OrderScreen::fetchDataFromAPI() {
-
-    QString orderUrl = settingConfig.getApiEndpoint("order","daily");
-
-    QNetworkRequest requestOrder(orderUrl);
-    requestOrder.setRawHeader("Authorization", "Bearer " + TokenManager::instance().getAccessToken().toUtf8());
-    requestOrder.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
-    QNetworkReply* replyOrder = networkManager->get(requestOrder);
-
-    connect(replyOrder, &QNetworkReply::finished, this, [this, replyOrder]() {
-        if (replyOrder->error() == QNetworkReply::NoError) {
-            QByteArray responseData = replyOrder->readAll();
-            parseJsonResponse(responseData);
-        } else {
-            qDebug() << "API Request Failed: " << replyOrder->errorString();
-        }
-        replyOrder->deleteLater();
+    const QUrl url(settingConfig.getApiEndpoint("order","daily"));
+    ApiClient::instance().get(url, [this](const QJsonObject &response) {
+        parseJsonResponse(QJsonDocument(response).toJson(QJsonDocument::Compact));
+    }, [](const QString &message, int) {
+        qDebug() << "Order API request failed:" << message;
     });
-}
-
-void OrderScreen::onDateChanged(const QDate &selectedDate) {
-    QString selectedDateStr = selectedDate.toString("yyyy-MM-dd");
-    qDebug() << "Date Selected:" << selectedDateStr;
-
-    // TODO: Update table contents based on the selected date
-    // fetchDataFromAPI(selectedDateStr);  // Uncomment if API filtering is implemented
 }
 
 void OrderScreen::parseJsonResponse(const QByteArray &responseData) {
@@ -238,7 +201,6 @@ void OrderScreen::parseJsonResponse(const QByteArray &responseData) {
 
     ordersLayout->addWidget(orderWidget);
 
-    // // Create OrderSummary widget
     OrderSummary *summaryWidget = new OrderSummary(dataArray, this);
 
     QLayoutItem *child;
@@ -248,7 +210,6 @@ void OrderScreen::parseJsonResponse(const QByteArray &responseData) {
     }
 
     summaryLayout->addWidget(summaryWidget);
-
 }
 
 void OrderScreen::onSettlementClicked() {
@@ -256,75 +217,76 @@ void OrderScreen::onSettlementClicked() {
     QString startDateTime = currentDate.toString("yyyy-MM-dd") + "T00:00:00";
     QString endDateTime   = currentDate.toString("yyyy-MM-dd") + "T23:59:59";
 
-    QString settlementUrl = settingConfig.getApiEndpoint("reports", "settlement");
-    QUrl url(settlementUrl);
+    QUrl url(settingConfig.getApiEndpoint("reports", "settlement"));
     QUrlQuery query;
     query.addQueryItem("start", startDateTime);
     query.addQueryItem("end", endDateTime);
     url.setQuery(query);
 
-    QNetworkRequest request(url);
-    request.setRawHeader("Authorization", "Bearer " + TokenManager::instance().getAccessToken().toUtf8());
-    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
-
-    QNetworkReply* reply = networkManager->get(request);
-
-    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
-        if (reply->error() == QNetworkReply::NoError) {
-            QByteArray responseData = reply->readAll();
-            qDebug() << "Settlement response:" << responseData;
-            QJsonDocument doc = QJsonDocument::fromJson(responseData);
-            QJsonObject settlementData = doc.object()["data"].toObject();
-
-            OrderPrint printer(settlementData);
-            printer.sendSettlementToReceiptPrinter();
-
-        } else {
-            qDebug() << "Settlement API error:" << reply->errorString();
-            QMessageBox::warning(this, "Settlement Error", "Failed to fetch settlement report.");
-        }
-        reply->deleteLater();
+    ApiClient::instance().get(url, [](const QJsonObject &response) {
+        QJsonObject settlementData = response["data"].toObject();
+        OrderPrint printer(settlementData);
+        printer.sendSettlementToReceiptPrinter();
+    }, [this](const QString &message, int) {
+        qDebug() << "Settlement API error:" << message;
+        QMessageBox::warning(this, "Settlement Error", "Failed to fetch settlement report.");
     });
 }
 
 
 void OrderScreen::onOrderClicked() {
+    orderNumberCounter++;
+    QString orderTitle = QString("Order #%1").arg(orderNumberCounter, 3, 10, QLatin1Char('0'));
+
     OrderForm *newTab = new OrderForm(tabWidget);
-    QString tabName = QString("New Order");
-    int newTabIndex = tabWidget->addTab(newTab, tabName);
+    int newTabIndex = tabWidget->addTab(newTab, "");
 
-    // Get the tab bar
-    QTabBar *tabBar = tabWidget->tabBar();
+    OrderTabButton *tabButton = new OrderTabButton();
+    tabButton->setTitle(orderTitle);
+    tabButton->setSubtitle("0 items   Rp 0");
+    tabWidget->tabBar()->setTabButton(newTabIndex, QTabBar::LeftSide, tabButton);
 
-    // Create a close button
-    QPushButton *closeButton = new QPushButton("❌");
-    closeButton->setFixedSize(20, 20);
-    closeButton->setStyleSheet("QPushButton { border: none; color: red; font-size: 12px; }"
-                               "QPushButton:hover { color: darkred; }");
+    connect(tabButton->closeButton, &QPushButton::clicked, this, [this, tabButton, orderTitle, newTab]() {
+        int index = -1;
+        for (int i = 0; i < tabWidget->count(); ++i) {
+            if (tabWidget->tabBar()->tabButton(i, QTabBar::LeftSide) == tabButton) {
+                index = i;
+                break;
+            }
+        }
+        if (index == -1) {
+            return;
+        }
 
-    // Remove the tab when close button is clicked
-    connect(closeButton, &QPushButton::clicked, [this, newTabIndex]() {
-        tabWidget->removeTab(newTabIndex);
+        QMessageBox msgBox(this);
+        msgBox.setWindowTitle("Close Order");
+        msgBox.setText(QString("Do you really want to close %1?").arg(orderTitle));
+        msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
+        msgBox.setDefaultButton(QMessageBox::No);
+
+        if (msgBox.exec() == QMessageBox::Yes) {
+            tabWidget->removeTab(index);
+            newTab->deleteLater();
+        }
     });
 
-    tabBar->setTabButton(newTabIndex, QTabBar::RightSide, closeButton);
+    newTab->setTabButtonWidget(tabButton, orderTitle);
 
     tabWidget->setCurrentIndex(newTabIndex);
 }
 
 void OrderScreen::onTabChanged(int index) {
-    if (index == 0) {  // If the first tab (Orders) is selected
-        qDebug() << "Orders tab selected. Refreshing data...";
+    if (index == 0) {
         fetchDataFromAPI();
     }
 }
 
-void OrderScreen::addProductToList() {
-    QString product = productNameInput->text() + " (Qty: " + quantityInput->text() + ")";
-    productListWidget->addItem(product);
-}
-
 void OrderScreen::closeEvent(QCloseEvent *event) {
+    if (exitConfirmed) {
+        event->accept();
+        return;
+    }
+
     QMessageBox msgBox;
     msgBox.setWindowTitle("Exit Confirmation");
     msgBox.setText("Do you really want to close?");
@@ -352,9 +314,22 @@ void OrderScreen::onSalesReportClicked() {
 }
 
 void OrderScreen::onSettingsClicked() {
-    SettingsDialog *dialog = new SettingsDialog(this);
-    dialog->exec();
-    delete dialog;
+    SettingsScreen *settings = new SettingsScreen();
+    settings->setAttribute(Qt::WA_DeleteOnClose);
+
+    connect(settings, &SettingsScreen::backRequested, this, [this]() {
+        this->showFullScreen();
+    });
+
+    connect(settings, &SettingsScreen::loggedOut, this, [this]() {
+        exitConfirmed = true;
+        this->close();
+        LoginScreen *loginScreen = new LoginScreen();
+        loginScreen->show();
+    });
+
+    this->hide();
+    settings->showFullScreen();
 }
 
 void OrderScreen::onLogoutClicked() {
@@ -368,14 +343,10 @@ void OrderScreen::onLogoutClicked() {
         TokenManager::instance().clearTokens();
         CacheUtils::clearAppCache();
 
-        // Close the order screen and emit signal to show login
-        QWidget *parent = this->parentWidget();
+        exitConfirmed = true;
         this->close();
-        if (parent) {
-            parent->hide();
-            LoginScreen *loginScreen = new LoginScreen();
-            loginScreen->show();
-        }
+        LoginScreen *loginScreen = new LoginScreen();
+        loginScreen->show();
     }
 }
 

@@ -3,6 +3,7 @@
 #include "orderitem.h"
 #include "orderitemsku.h"
 #include "orderform.h"
+#include "screenutils.h"
 #include <QList>
 #include <QHBoxLayout>
 #include <QLabel>
@@ -17,59 +18,52 @@ OrderCartWidget::OrderCartWidget(OrderItem orderItem, OrderForm *orderForm, QWid
 
     QHBoxLayout *layout = new QHBoxLayout(this);
     layout->setAlignment(Qt::AlignTop);
-    layout->setSpacing(5);
+    layout->setSpacing(8);
     layout->setContentsMargins(10, 10, 10, 10);
 
     QLabel *productNameLabel = new QLabel(orderItem.productName, this);
-    productNameLabel->setStyleSheet("font-weight: bold; font-size: 14px; background-color: #F0F4F0; padding: 8px 12px;");
+    productNameLabel->setStyleSheet(ScreenUtils::qss(
+        "font-weight: bold; font-size: 14px; color: #0f172a;"
+        "background-color: #eff6ff; border-radius: 8px; padding: 8px 12px;"));
 
     QVBoxLayout *skuLayout = new QVBoxLayout();
-    orderCartSkuWidget(orderItem, skuLayout);
+    m_skuLayout = skuLayout;
+    orderCartSkuWidget(orderItem, m_skuLayout);
 
     // Add widgets to main layout
     layout->addWidget(productNameLabel, 3);
-    layout->addLayout(skuLayout, 7);
+    layout->addLayout(m_skuLayout, 7);
+
+    setObjectName("cartCard");
 
     setLayout(layout);
 }
 
-void OrderCartWidget::orderCartSkuWidget(OrderItem &orderItem, QVBoxLayout *&skuLayout) {
+void OrderCartWidget::orderCartSkuWidget(const OrderItem &orderItem, QVBoxLayout *&skuLayout) {
     subTotal = 0;
     for (const OrderItemSku &orderItemSku : std::as_const(orderItem.orderItemSkus)) {
         // Create button layout for quantity control
         QHBoxLayout *buttonLayout = new QHBoxLayout();
         buttonLayout->setAlignment(Qt::AlignLeft);
-        buttonLayout->setSpacing(5);
-        buttonLayout->setContentsMargins(5, 5, 5, 5);
+        buttonLayout->setSpacing(2);
+        buttonLayout->setContentsMargins(2, 2, 2, 2);
 
         QLabel *skuNameLabel = new QLabel(orderItemSku.skuName, this);
-        skuNameLabel->setStyleSheet("font-size: 15px; font-weight: bold;");
+        skuNameLabel->setStyleSheet(ScreenUtils::qss("font-size: 15px; font-weight: bold;"));
         QLabel *skuPriceLabel = new QLabel("Rp. " + locale.toString(orderItemSku.subTotal, 'f', 0), this);
-        skuPriceLabel->setStyleSheet("color: #28a745; font-size: 14px; font-weight: bold;");
+        skuPriceLabel->setStyleSheet(ScreenUtils::qss("color: #28a745; font-size: 14px; font-weight: bold;"));
 
         QPushButton *minusButton = new QPushButton("-", this);
         QPushButton *plusButton = new QPushButton("+", this);
         QLabel *totalLabel = new QLabel(locale.toString(orderItemSku.quantity), this);
 
-        totalLabel->setFixedSize(40, 44);
+        totalLabel->setFixedSize(ScreenUtils::px(34), ScreenUtils::px(30));
         totalLabel->setAlignment(Qt::AlignCenter);
-        totalLabel->setStyleSheet("font-size: 16px; font-weight: bold;");
+        totalLabel->setStyleSheet(ScreenUtils::qss("font-size: 13px; font-weight: bold;"));
 
         // Style buttons for modern look
-        QString buttonStyle =
-            "QPushButton {"
-            "   background-color: #007bff;"
-            "   color: white;"
-            "   font-size: 18px;"
-            "   border-radius: 10px;"
-            "   width: 36px;"
-            "   height: 36px;"
-            "}"
-            "QPushButton:hover { background-color: #0056b3; }"
-            "QPushButton:pressed { background-color: #004494; }";
-
-        minusButton->setStyleSheet(buttonStyle);
-        plusButton->setStyleSheet(buttonStyle);
+        minusButton->setObjectName("qtyButton");
+        plusButton->setObjectName("qtyButton");
 
         int productId = orderItem.productId;
         QString productName = orderItem.productName;
@@ -104,6 +98,27 @@ void OrderCartWidget::orderCartSkuWidget(OrderItem &orderItem, QVBoxLayout *&sku
 
         skuLayout->addLayout(buttonLayout);
     }
+}
+
+void OrderCartWidget::updateItem(const OrderItem &orderItem) {
+    subTotal = 0;
+    if (!m_skuLayout) {
+        return;
+    }
+
+    while (QLayoutItem *item = m_skuLayout->takeAt(0)) {
+        if (QLayout *row = item->layout()) {
+            while (QLayoutItem *child = row->takeAt(0)) {
+                if (child->widget()) {
+                    child->widget()->deleteLater();
+                }
+                delete child;
+            }
+        }
+        delete item;
+    }
+
+    orderCartSkuWidget(orderItem, m_skuLayout);
 }
 
 double OrderCartWidget::getTotal() {

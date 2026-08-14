@@ -2,6 +2,7 @@
 #include "tokenmanager.h"
 #include "screenutils.h"
 #include "touchutils.h"
+#include "apiclient.h"
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -25,7 +26,6 @@ SalesReportScreen::SalesReportScreen(QWidget *parent)
     , tableWidget(new QTableWidget(this))
     , startDateEdit(new QDateEdit(this))
     , endDateEdit(new QDateEdit(this))
-    , networkManager(new QNetworkAccessManager(this))
 {
     locale = QLocale::English;
 
@@ -34,8 +34,8 @@ SalesReportScreen::SalesReportScreen(QWidget *parent)
 
     QVBoxLayout *mainLayout = new QVBoxLayout(this);
 
-    QLabel *titleLabel = new QLabel("📈 Sales Report", this);
-    titleLabel->setStyleSheet("font-size: 20px; font-weight: bold; color: white;");
+    QLabel *titleLabel = new QLabel("Sales Report", this);
+    titleLabel->setObjectName("sectionHeader");
     titleLabel->setAlignment(Qt::AlignCenter);
     mainLayout->addWidget(titleLabel);
 
@@ -43,36 +43,24 @@ SalesReportScreen::SalesReportScreen(QWidget *parent)
     QHBoxLayout *filterLayout = new QHBoxLayout(filterWidget);
 
     QLabel *startLabel = new QLabel("Start:", this);
-    startLabel->setStyleSheet("color: white; font-size: 14px;");
+    startLabel->setStyleSheet(ScreenUtils::qss("font-size: 14px; font-weight: 600; color: #334155;"));
 
     startDateEdit->setCalendarPopup(true);
     startDateEdit->setDate(QDate::currentDate());
     startDateEdit->setDisplayFormat("yyyy-MM-dd");
 
     QLabel *endLabel = new QLabel("End:", this);
-    endLabel->setStyleSheet("color: white; font-size: 14px;");
+    endLabel->setStyleSheet(ScreenUtils::qss("font-size: 14px; font-weight: 600; color: #334155;"));
 
     endDateEdit->setCalendarPopup(true);
     endDateEdit->setDate(QDate::currentDate());
     endDateEdit->setDisplayFormat("yyyy-MM-dd");
 
-    QPushButton *loadButton = new QPushButton("🔍 Load Report", this);
-    loadButton->setStyleSheet("QPushButton {"
-                              "background-color: #007bff; color: white;"
-                              "border-radius: 8px; padding: 8px 16px; font-size: 14px;"
-                              "border: 2px solid #0056b3;"
-                              "} QPushButton:hover {"
-                              "background-color: #0056b3;"
-                              "}");
+    QPushButton *loadButton = new QPushButton("Load Report", this);
+    loadButton->setObjectName("primaryButton");
 
-    QPushButton *backButton = new QPushButton("⬅ Back", this);
-    backButton->setStyleSheet("QPushButton {"
-                              "background-color: #6c757d; color: white;"
-                              "border-radius: 8px; padding: 8px 16px; font-size: 14px;"
-                              "border: 2px solid #495057;"
-                              "} QPushButton:hover {"
-                              "background-color: #495057;"
-                              "}");
+    QPushButton *backButton = new QPushButton("Back", this);
+    backButton->setObjectName("secondaryButton");
 
     filterLayout->addWidget(backButton);
     filterLayout->addStretch();
@@ -90,16 +78,7 @@ SalesReportScreen::SalesReportScreen(QWidget *parent)
     tableWidget->setHorizontalHeaderLabels({"Category", "Product", "QTY", "Gross Sales", "Discount", "Net Sales"});
     tableWidget->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
     tableWidget->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    tableWidget->setStyleSheet(
-        "QHeaderView::section {"
-        "   background-color: black;"
-        "   color: white;"
-        "   font-weight: bold;"
-        "   font-size: 14px;"
-        "   padding: 6px;"
-        "   border: 1px solid #444;"
-        "}"
-        );
+    tableWidget->setAlternatingRowColors(true);
     TouchUtils::enableItemViewScrolling(tableWidget);
 
     mainLayout->addWidget(tableWidget);
@@ -116,27 +95,17 @@ void SalesReportScreen::fetchSalesReport() {
     QString startDateTime = startDateEdit->date().toString("yyyy-MM-dd") + "T00:00:00";
     QString endDateTime = endDateEdit->date().toString("yyyy-MM-dd") + "T23:59:59";
 
-    QString salesUrl = settingConfig.getApiEndpoint("reports", "sales");
-    QUrl url(salesUrl);
+    QUrl url(settingConfig.getApiEndpoint("reports", "sales"));
     QUrlQuery query;
     query.addQueryItem("start", startDateTime);
     query.addQueryItem("end", endDateTime);
     url.setQuery(query);
 
-    QNetworkRequest request(url);
-    request.setRawHeader("Authorization", "Bearer " + TokenManager::instance().getAccessToken().toUtf8());
-    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
-
-    QNetworkReply* reply = networkManager->get(request);
-
-    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
-        if (reply->error() == QNetworkReply::NoError) {
-            parseSalesReportResponse(reply->readAll());
-        } else {
-            qDebug() << "Sales Report API error:" << reply->errorString();
-            QMessageBox::warning(this, "Sales Report Error", "Failed to fetch sales report.");
-        }
-        reply->deleteLater();
+    ApiClient::instance().get(url, [this](const QJsonObject &response) {
+        parseSalesReportResponse(QJsonDocument(response).toJson(QJsonDocument::Compact));
+    }, [this](const QString &message, int) {
+        qDebug() << "Sales Report API error:" << message;
+        QMessageBox::warning(this, "Sales Report Error", "Failed to fetch sales report.");
     });
 }
 

@@ -1,12 +1,16 @@
 #ifndef TOKENMANAGER_H
 #define TOKENMANAGER_H
 
+#include <QObject>
 #include <QString>
 #include <QNetworkAccessManager>
+#include <functional>
 #include "setting.h"
 
-class TokenManager
+class TokenManager : public QObject
 {
+    Q_OBJECT
+
 public:
     static TokenManager& instance();
 
@@ -15,14 +19,15 @@ public:
     void setTokens(const QString &accessToken, const QString &refreshToken);
     void clearTokens();
 
+    // Asynchronously refresh the access token. callback(true) on success.
+    void refreshToken(const std::function<void(bool)> &callback);
+
 private:
     TokenManager();
     TokenManager(const TokenManager&) = delete;
     TokenManager& operator=(const TokenManager&) = delete;
 
-    bool refreshAccessToken();
     bool isAccessTokenExpired(const QString &accessToken) const;
-    QByteArray sendRefreshRequest(const QString &refreshToken) const;
 
     QNetworkAccessManager networkManager;
     Setting settingConfig;

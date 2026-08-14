@@ -2,7 +2,6 @@
 #include <QVBoxLayout>
 #include <QPushButton>
 #include <QMessageBox>
-#include <QTextBrowser>
 #include <QJsonObject>
 #include <QString>
 #include <QJsonArray>
@@ -12,14 +11,19 @@
 #include <QNetworkAccessManager>
 #include <QNetworkRequest>
 #include <QNetworkReply>
+#include <QTableWidget>
+#include <QTableWidgetItem>
+#include <QHeaderView>
+#include <QAbstractItemView>
 #include <orderprint.h>
 #include <orderpaymentpopup.h>
 #include "tokenmanager.h"
 #include "screenutils.h"
 #include "touchutils.h"
+#include "apiclient.h"
 
 OrderPopupWindow::OrderPopupWindow(const QJsonObject &order, QTabWidget *tabWidget, QWidget *parent)
-    : QDialog(parent), networkManager(new QNetworkAccessManager(this)), orderDetails(order), tabWidget(tabWidget) {
+    : QDialog(parent), orderDetails(order), tabWidget(tabWidget) {
     setWindowTitle("Order Details");
     setFixedSize(ScreenUtils::fittedSize(850, 700, 0.95, 0.92));
 
@@ -27,201 +31,151 @@ OrderPopupWindow::OrderPopupWindow(const QJsonObject &order, QTabWidget *tabWidg
 
     QVBoxLayout *layout = new QVBoxLayout(this);
 
-    // HTML viewer to display order details
-    htmlViewer = new QTextBrowser(this);
-    htmlViewer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    htmlViewer->setMinimumWidth(520);  // Set a minimum width
-    htmlViewer->setMaximumWidth(16777215);  // Ensure no limit
-    TouchUtils::enableTouchScrolling(htmlViewer);
-
-    // Extract data from QJsonObject
-
-    double subTotal = order.value("subTotal").toDouble();
-    double discountTotal = order.value("discountTotal").toDouble();
-    double grandTotal = order.value("grandTotal").toDouble();
-    QJsonArray orderDetails = order.value("orderDetails").toArray();
-
-    QString table = R"(
-        <style>
-            .scroll-container {
-                width: 100%;
-                overflow-x: auto;
-            }
-            table {
-                width: 100%;
-                min-width: 620px;
-                border-collapse: collapse;
-                border: 1px solid #ddd;
-            }
-            th, td {
-                border: 1px solid #ddd;
-                padding: 8px;
-                text-align: left;
-                font-size: 13px;
-                white-space: nowrap;
-            }
-            th {
-                background-color: #4CAF50;
-                color: white;
-            }
-            tr:nth-child(even) {
-                background-color: #f9f9f9;
-            }
-
-            /* Narrower Quantity column */
-            th:nth-child(3), td:nth-child(3) {
-                width: 20px;
-                text-align: center;
-            }
-            /* Optional: shrink Price and Amount if needed */
-            th:nth-child(4), td:nth-child(4),
-            th:nth-child(5), td:nth-child(5) {
-                width: 80px;
-                text-align: right;
-            }
-        </style>
-        <div class='scroll-container'>
-    )";
-
-
-    // Extract order metadata
+    // ======================= Header info =======================
     QString orderNo = order.value("orderNo").toString();
     QString customerName = order.value("customerName").toString();
     QString remark = order.value("remark").toString();
 
-
-    QString createdAtStr = !order.value("createdAt").isNull() && order.value("createdAt").isString() ? order.value("createdAt").toString() : "";
+    QString createdAtStr = order.value("createdAt").isString() ? order.value("createdAt").toString() : "";
     QDateTime createdAt;
     if (!createdAtStr.isEmpty()) {
         createdAt = QDateTime::fromString(createdAtStr, Qt::ISODate);
-        createdAt.setTimeZone(QTimeZone::utc());  // Assume the input is in UTC
-        createdAt = createdAt.toTimeZone(QTimeZone("Asia/Jakarta"));  // Convert to WIB (UTC+7)
+        createdAt.setTimeZone(QTimeZone::utc());
+        createdAt = createdAt.toTimeZone(QTimeZone("Asia/Jakarta"));
     } else {
-        createdAt = QDateTime::currentDateTimeUtc().toTimeZone(QTimeZone("Asia/Jakarta"));  // Default to WIB
+        createdAt = QDateTime::currentDateTimeUtc().toTimeZone(QTimeZone("Asia/Jakarta"));
+    }
+    QString orderDateTime = createdAt.toString("yyyy-MM-dd HH:mm");
+
+    QString headerText = QString("Order No: %1   |   Customer: %2   |   Date: %3")
+                             .arg(orderNo, customerName, orderDateTime);
+    if (!remark.isEmpty()) {
+        headerText += QString("\nRemark: %1").arg(remark);
     }
 
-    QString orderDateTime = createdAt.toString("yyyy-MM-dd HH:mm");  // Ensure this is formatted properly
+    QLabel *headerLabel = new QLabel(headerText, this);
+    headerLabel->setObjectName("sectionHeader");
+    headerLabel->setWordWrap(true);
+    layout->addWidget(headerLabel);
 
-    // Header section with improved styling and remark
-    table += "<div style='text-align: center; margin-bottom: 20px; padding: 10px; "
-             "border-bottom: 2px solid #333; font-family: Arial, sans-serif;'>"
-             "<p style='margin: 5px 0; font-size: 14px;'>"
-             "<strong>Order No:</strong> " + orderNo + " | "
-                         "<strong>Customer:</strong> " + customerName + " | "
-                              "<strong>Date & Time:</strong> " + orderDateTime +
-             "</p>"
-             "<p style='margin-top: 10px; font-size: 14px; color: #666;'><strong>Remark:</strong> " + remark + "</p>"
-                        "</div>";
+    // ======================= Items table =======================
+    double subTotal = order.value("subTotal").toDouble();
+    double discountTotal = order.value("discountTotal").toDouble();
+    double grandTotal = order.value("grandTotal").toDouble();
+    QJsonArray orderDetailsArray = order.value("orderDetails").toArray();
 
-    table += "<table width=100%>"
-             "<tr>"
-             "<th>Product Name</th>"
-             "<th>SKU</th>"
-             "<th>Quantity</th>"
-             "<th>Price</th>"
-             "<th>Amount</th>"
-             "</tr>";
+    QTableWidget *itemsTable = new QTableWidget(this);
+    itemsTable->setColumnCount(5);
+    itemsTable->setHorizontalHeaderLabels({"Product", "SKU", "Qty", "Price", "Amount"});
+    itemsTable->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
+    itemsTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
+    itemsTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    itemsTable->setSelectionMode(QAbstractItemView::NoSelection);
+    itemsTable->setAlternatingRowColors(true);
+    TouchUtils::enableItemViewScrolling(itemsTable);
 
-    for (int i = 0; i < orderDetails.size(); ++i) {
-        QJsonObject orderObj = orderDetails[i].toObject();
-        QJsonArray orderSKus = orderObj.value("orderDetailSkus").toArray();
+    int itemRows = 0;
+    for (const QJsonValue &orderValue : orderDetailsArray) {
+        QJsonObject orderObj = orderValue.toObject();
+        QJsonArray orderSkus = orderObj.value("orderDetailSkus").toArray();
+        itemRows += orderSkus.size();
+    }
 
-        for (int j = 0; j < orderSKus.size(); j++) {
-            QJsonObject skuObj = orderSKus[j].toObject();
-            table += "<tr>";
+    itemsTable->setRowCount(itemRows + 3);
 
-            // Product Name (only for the first SKU)
+    int row = 0;
+    for (const QJsonValue &orderValue : orderDetailsArray) {
+        QJsonObject orderObj = orderValue.toObject();
+        QJsonArray orderSkus = orderObj.value("orderDetailSkus").toArray();
+        const QString productName = orderObj["productName"].toString();
+
+        for (int j = 0; j < orderSkus.size(); ++j) {
+            QJsonObject skuObj = orderSkus[j].toObject();
+
             if (j == 0) {
-                table += "<td rowspan='" + QString::number(orderSKus.size()) + "'>"
-                                   "<strong>" + orderObj["productName"].toString() + "</strong>"
-                    "</td>";
+                QTableWidgetItem *nameItem = new QTableWidgetItem(productName);
+                QFont nameFont = nameItem->font();
+                nameFont.setBold(true);
+                nameItem->setFont(nameFont);
+                itemsTable->setItem(row, 0, nameItem);
+                if (orderSkus.size() > 1) {
+                    itemsTable->setSpan(row, 0, orderSkus.size(), 1);
+                }
             }
 
-            // SKU, Quantity, Price, Amount
-            table += "<td>" + skuObj["skuName"].toString() + "</td>";
-            table += "<td style='text-align: center;'>" + locale.toString(skuObj["quantity"].toDouble(), 'f', 0) + "</td>";
-            table += "<td style='text-align: right;'>Rp " + locale.toString(skuObj["price"].toDouble(), 'f', 0) + "</td>";
-            table += "<td style='text-align: right;'>Rp " + locale.toString(skuObj["amount"].toDouble(), 'f', 0) + "</td>";
-            table += "</tr>";
+            QTableWidgetItem *qtyItem = new QTableWidgetItem(locale.toString(skuObj["quantity"].toDouble(), 'f', 0));
+            qtyItem->setTextAlignment(Qt::AlignCenter | Qt::AlignVCenter);
+            QTableWidgetItem *priceItem = new QTableWidgetItem("Rp " + locale.toString(skuObj["price"].toDouble(), 'f', 0));
+            priceItem->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+            QTableWidgetItem *amountItem = new QTableWidgetItem("Rp " + locale.toString(skuObj["amount"].toDouble(), 'f', 0));
+            amountItem->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+
+            itemsTable->setItem(row, 1, new QTableWidgetItem(skuObj["skuName"].toString()));
+            itemsTable->setItem(row, 2, qtyItem);
+            itemsTable->setItem(row, 3, priceItem);
+            itemsTable->setItem(row, 4, amountItem);
+            row++;
         }
     }
 
-    // Summary Row
-    table += "<tr><td colspan=4 style='text-align: right; font-weight: bold;'>Sub Total</td>"
-             "<td style='text-align: right;'>Rp " + locale.toString(subTotal, 'f', 0) + "</td></tr>";
+    QFont boldFont = itemsTable->font();
+    boldFont.setBold(true);
 
-    table += "<tr><td colspan=4 style='text-align: right; font-weight: bold;'>Discount</td>"
-             "<td style='text-align: right; color: red;'>Rp " + locale.toString(discountTotal, 'f', 0) + "</td></tr>";
+    int summaryRow = itemRows;
+    auto addSummaryRow = [&](const QString &label, const QString &value) {
+        itemsTable->setSpan(summaryRow, 0, 1, 4);
+        QTableWidgetItem *labelItem = new QTableWidgetItem(label);
+        labelItem->setFont(boldFont);
+        labelItem->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+        QTableWidgetItem *valueItem = new QTableWidgetItem(value);
+        valueItem->setFont(boldFont);
+        valueItem->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+        itemsTable->setItem(summaryRow, 0, labelItem);
+        itemsTable->setItem(summaryRow, 4, valueItem);
+        summaryRow++;
+    };
 
-    table += "<tr><td colspan=4 style='text-align: right; font-size: 16px; font-weight: bold;'>Total</td>"
-             "<td style='text-align: right; font-size: 16px; font-weight: bold; color: #4CAF50;'>Rp "
-             + locale.toString(grandTotal, 'f', 0) + "</td></tr>";
+    addSummaryRow("Sub Total", "Rp " + locale.toString(subTotal, 'f', 0));
+    addSummaryRow("Discount", "Rp " + locale.toString(discountTotal, 'f', 0));
+    addSummaryRow("Total", "Rp " + locale.toString(grandTotal, 'f', 0));
 
-    table += "</table></div>";
+    layout->addWidget(itemsTable, 1);
 
-    htmlViewer->setHtml(table);
-    layout->addWidget(htmlViewer);
-
-    // Common style for bigger buttons
-    QString buttonStyle = R"(
-        QPushButton {
-            font-size: 16px;
-            padding: 12px 20px;
-            min-height: 20px;
-            min-width: 120px;
-            background-color: #007bff;
-            color: white;
-            border-radius: 6px;
-        }
-        QPushButton:hover {
-            background-color: #0056b3;
-        }
-        QPushButton:pressed {
-            background-color: #004494;
-        }
-    )";
-
-    // Button layout - horizontal
+    // ======================= Buttons =======================
     QHBoxLayout *buttonLayout = new QHBoxLayout;
 
-    // Print button
     printButton = new QPushButton("Print", this);
-    printButton->setStyleSheet(buttonStyle);
+    printButton->setObjectName("primaryButton");
     connect(printButton, &QPushButton::clicked, this, &OrderPopupWindow::printOrder);
     buttonLayout->addWidget(printButton);
 
-    // Kitchen Print button
     printKitchenButton = new QPushButton("Kitchen Print", this);
-    printKitchenButton->setStyleSheet(buttonStyle);
+    printKitchenButton->setObjectName("primaryButton");
     connect(printKitchenButton, &QPushButton::clicked, this, &OrderPopupWindow::kitchenPrintOrder);
     buttonLayout->addWidget(printKitchenButton);
 
     QString status = order.value("status").toString().toUpper();
 
-    // PAY button for CONFIRMED orders
     if (status == "CONFIRMED" || status == "PAID") {
         if (status == "CONFIRMED") {
             payButton = new QPushButton("Pay", this);
-            payButton->setStyleSheet(buttonStyle);
+            payButton->setObjectName("successButton");
             connect(payButton, &QPushButton::clicked, this, &OrderPopupWindow::payOrder);
             buttonLayout->addWidget(payButton);
         }
 
         voidButton = new QPushButton("Void", this);
-        voidButton->setStyleSheet(buttonStyle);
+        voidButton->setObjectName("dangerButton");
         connect(voidButton, &QPushButton::clicked, this, &OrderPopupWindow::voidOrder);
         buttonLayout->addWidget(voidButton);
     }
 
-    // Close button
     closeButton = new QPushButton("Close", this);
-    closeButton->setStyleSheet(buttonStyle);
+    closeButton->setObjectName("secondaryButton");
     connect(closeButton, &QPushButton::clicked, this, &OrderPopupWindow::closeWindow);
     buttonLayout->addWidget(closeButton);
 
-    // Add the horizontal button layout to the main vertical layout
     layout->addLayout(buttonLayout);
-
 }
 
 OrderPopupWindow::~OrderPopupWindow() {
@@ -231,47 +185,23 @@ void OrderPopupWindow::payOrder() {
     OrderPaymentPopup *popup = new OrderPaymentPopup(this->orderDetails, this->tabWidget, this);
 
     connect(popup, &QDialog::accepted, this, [=]() {
-      this->accept();  // Close OrderPopupWindow only if payment was successful
+      this->accept();
     });
 
-    popup->exec();  // Show payment popup modally
+    popup->exec();
 }
 
 void OrderPopupWindow::voidOrder() {
-    QString authToken = TokenManager::instance().getAccessToken();
-
-    int orderId = orderDetails["id"].toInt();  // Use toInt()
+    int orderId = orderDetails["id"].toInt();
     QUrl apiUrl(QString(configSetting.getApiEndpoint("order", "void")).arg(orderId));
 
-    QNetworkRequest request(apiUrl);
-    request.setRawHeader("Authorization", "Bearer " + authToken.toUtf8());
-    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
-
-    // Empty body
-    QNetworkReply *reply = networkManager->put(request, QByteArray());
-
-    // Handle API response
-    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
-        if (reply->error() == QNetworkReply::NoError) {
-            QByteArray responseData = reply->readAll();
-
-            if (responseData.isEmpty()) {
-                qDebug() << "Empty response received!";
-                QMessageBox::warning(this, "Error", "No response from the server.");
-            } else {
-                qDebug() << "Void successful: " << responseData;
-                this->accept();  // Close OrderPopupWindow
-            }
-        } else {
-            qDebug() << "Void order failed: " << reply->errorString();
-            QMessageBox::warning(this, "Error", "Failed to void the order. Please try again.");
-        }
-
-        reply->deleteLater();
+    ApiClient::instance().put(apiUrl, QByteArray(), [this](const QJsonObject &) {
+        this->accept();
+    }, [this](const QString &message, int) {
+        qDebug() << "Void order failed:" << message;
+        QMessageBox::warning(this, "Error", "Failed to void the order. Please try again.");
     });
 }
-
-
 
 void OrderPopupWindow::printOrder() {
     OrderPrint printer(orderDetails);
@@ -284,5 +214,5 @@ void OrderPopupWindow::kitchenPrintOrder() {
 }
 
 void OrderPopupWindow::closeWindow() {
-    this->accept(); // Close the window
+    this->accept();
 }

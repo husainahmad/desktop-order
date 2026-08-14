@@ -5,21 +5,20 @@
 #include <QSplitter>
 #include <QBoxLayout>
 #include <QLineEdit>
+#include <QHash>
+#include <QTabWidget>
 
-#include <QNetworkAccessManager>
-#include <QNetworkReply>
-#include <QSettings>
-#include <QTreeView>
-#include <QStandardItemModel>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QJsonObject>
 #include <QTextEdit>
-#include <QLineEdit>
 #include "product.h"
 #include "order.h"
 #include <QLocale>
 #include "setting.h"
+#include "ordertabbutton.h"
+
+class OrderCartWidget;
 
 namespace Ui {
 class OrderForm;
@@ -33,20 +32,20 @@ public:
     explicit OrderForm(QTabWidget *tabWidget, QWidget *parent = nullptr);
     ~OrderForm();
     void updateOrderData(const Product &product, const Sku &sku, const bool &add);
+    void setTabButtonWidget(OrderTabButton *tabButton, const QString &orderTitle);
+    void updateTabSubtitle();
 
 public slots:
     void updateQuantity(const Product &product, const Sku &sku, bool add);
 
 private slots:
     void fetchDataFromAPI();
-    void onDataReceived(QNetworkReply *reply);
+    void onDataReceived(const QJsonObject &response);
     void updateCategoryLeftPanel(const QJsonArray &dataArray);
     void fetchDataDetailProduct(QString id);
-    void onDataDetailProductReceived(QNetworkReply *reply);
     void updateProductLeftTopPanel(const QJsonArray &dataArray);
     void filterProducts(const QString &query);
     bool checkSku(const Sku &sku, const bool &add, OrderItem &orderItem);
-    void removeSku(const int &productId, const Sku &sku);
     void onConfirmButtonClicked();
 
     QList<Sku> getSkuFromItem(const QJsonObject &object);
@@ -56,18 +55,15 @@ private slots:
 private:
     Ui::OrderForm *ui;
     QTabWidget *tabWidget;
-    QNetworkAccessManager *networkManager;
     QWidget *bottomLeftWidget;
     QGridLayout *buttonGridLayout;
     QList<QWidget*> productWidgets;
     QGridLayout *gridLayout;
     QList<Product> products;
     QLineEdit *searchBox;
-    QSettings settings;
-    QTreeView *treeView;
-    QStandardItemModel *treeModel;
-    Order *order;
+    Order order;
     QVBoxLayout *cartLayout;
+    QHash<int, OrderCartWidget*> cartWidgets;
     QTextEdit *remarkText;
     QLineEdit *customerNameText;
     QLineEdit *discountText;
@@ -76,6 +72,8 @@ private:
     void populateOrderOnRightPanel();
     QLocale locale;
     Setting settingConfig;
+    QString tabName;
+    OrderTabButton *tabButton = nullptr;
 };
 
 #endif // ORDERFORM_H

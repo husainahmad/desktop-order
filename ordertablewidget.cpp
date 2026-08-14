@@ -2,11 +2,13 @@
 #include "ui_ordertablewidget.h"
 #include "orderpopupwindow.h"
 #include "touchutils.h"
+#include "screenutils.h"
 
 #include <QBoxLayout>
 #include <QLabel>
 #include <QTableWidget>
 #include <QHeaderView>
+#include <QAbstractItemView>
 
 #include <QDateTime>
 #include <QTimeZone>
@@ -17,7 +19,6 @@
 #include <QDateEdit>
 #include <QJsonObject>
 #include <QJsonArray>
-#include <QPushButton>
 
 OrderTableWidget::OrderTableWidget(const QJsonArray &dataArray, QTabWidget *tabWidget, QWidget *parent)
     : QWidget(parent)
@@ -28,21 +29,10 @@ OrderTableWidget::OrderTableWidget(const QJsonArray &dataArray, QTabWidget *tabW
     QVBoxLayout *mainLayout = new QVBoxLayout(this);
     mainLayout->setSpacing(0);
 
-    QTableWidget *tableWidget = new QTableWidget(1, 9, this);
-
-    tableWidget->setStyleSheet(
-        "QHeaderView::section {"
-        "   background-color: black;"  // Black background
-        "   color: white;"              // White text
-        "   font-weight: bold;"         // Bold font
-        "   font-size: 14px;"           // Font size
-        "   padding: 6px;"              // Padding inside header cells
-        "   border: 1px solid #444;"    // Slight border for separation
-        "}"
-        );
+    QTableWidget *tableWidget = new QTableWidget(1, 8, this);
 
     // Set header labels
-    tableWidget->setHorizontalHeaderLabels({"Order No", "Date", "Customer", "Payment", "Status", "Sub Total", "Disc", "Total", "Action"});
+    tableWidget->setHorizontalHeaderLabels({"Order No", "Date", "Customer", "Payment", "Status", "Sub Total", "Disc", "Total"});
 
     // Resize mode for proper spacing
     tableWidget->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
@@ -51,10 +41,21 @@ OrderTableWidget::OrderTableWidget(const QJsonArray &dataArray, QTabWidget *tabW
     tableWidget->horizontalHeader()->setSectionResizeMode(4, QHeaderView::ResizeToContents);
     tableWidget->horizontalHeader()->setSectionResizeMode(6, QHeaderView::ResizeToContents);
     TouchUtils::enableItemViewScrolling(tableWidget);
+    tableWidget->setSelectionBehavior(QAbstractItemView::SelectRows);
+    tableWidget->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    tableWidget->setAlternatingRowColors(true);
+
+    connect(tableWidget, &QTableWidget::cellClicked, this, [this, tableWidget](int row, int) {
+        QTableWidgetItem *item = tableWidget->item(row, 0);
+        if (!item) {
+            return;
+        }
+        OrderPopupWindow popup(item->data(Qt::UserRole).toJsonObject(), this->tabWidget);
+        popup.exec();
+    });
 
     tableWidget->setRowCount(dataArray.size());  // Adjust row count dynamically
 
-    double total = 0;
     for (int i = 0; i < dataArray.size(); ++i) {
         QJsonObject orderObj = dataArray[i].toObject();
 
@@ -68,8 +69,10 @@ OrderTableWidget::OrderTableWidget(const QJsonArray &dataArray, QTabWidget *tabW
         int paymentId = 0; // UnPaid
 
         QJsonObject paymentObject = orderObj["orderPayment"].toObject();
+        if (!paymentObject.isEmpty()) {
+            paymentId = paymentObject["paymentId"].toInt();
+        }
 
-        total += grandTotal;
         // Parse "createdAt" safely
         QString createdAtStr = orderObj.contains("createdAt") && orderObj["createdAt"].isString() ? orderObj["createdAt"].toString() : "";
         QDateTime createdAt;
@@ -82,6 +85,7 @@ OrderTableWidget::OrderTableWidget(const QJsonArray &dataArray, QTabWidget *tabW
         }
 
         tableWidget->setItem(i, 0, new QTableWidgetItem(orderNo));
+        tableWidget->item(i, 0)->setData(Qt::UserRole, orderObj);
         tableWidget->setItem(i, 1, new QTableWidgetItem(createdAt.toString("yyyy-MM-dd HH:mm")));
         tableWidget->setItem(i, 2, new QTableWidgetItem(customerName));
 
@@ -115,39 +119,6 @@ OrderTableWidget::OrderTableWidget(const QJsonArray &dataArray, QTabWidget *tabW
         tableWidget->setItem(i, 5, subTotalItem);
         tableWidget->setItem(i, 6, discountItem);
         tableWidget->setItem(i, 7, totalItem);
-
-        QPushButton *button = new QPushButton("Detail");
-
-        button->setStyleSheet(
-            "QPushButton {"
-            "   background-color: #007bff;"  // Blue background
-            "   color: white;"                // White text
-            "   border-radius: 5px;"          // Rounded corners
-            "   padding: 5px 10px;"           // Padding inside button
-            "   font-size: 14px;"             // Font size
-            "}"
-            "QPushButton:hover {"
-            "   background-color: #0056b3;"   // Darker blue on hover
-            "}"
-            "QPushButton:pressed {"
-            "   background-color: #004494;"   // Even darker blue when pressed
-            "}"
-            );
-
-        QObject::connect(button, &QPushButton::clicked, [this, orderObj]() {
-            OrderPopupWindow popup(orderObj, this->tabWidget);
-            popup.exec();
-        });
-
-        // Create a widget to hold the button
-        QWidget *container = new QWidget();
-        QHBoxLayout *layout = new QHBoxLayout(container);
-        layout->addWidget(button);
-        layout->setAlignment(Qt::AlignCenter);
-        layout->setContentsMargins(0, 0, 0, 0);
-        container->setLayout(layout);
-        tableWidget->setCellWidget(i, 8, container);
-        tableWidget->setAlternatingRowColors(true);
     }
 
     // Add table to layout

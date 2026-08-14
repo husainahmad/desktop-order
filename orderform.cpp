@@ -1,23 +1,17 @@
 #include "orderform.h"
 #include "ui_orderform.h"
 #include "touchutils.h"
+#include "screenutils.h"
+#include "apiclient.h"
 #include <QLabel>
 #include <QTextEdit>
 #include <QTableWidgetItem>
 #include <QScrollArea>
 #include <QPushButton>
 #include <QLineEdit>
-#include <QNetworkAccessManager>
-#include <QNetworkRequest>
-#include <QNetworkReply>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
-#include <QSettings>
-#include <QTextBrowser>
-#include <QTreeView>
-#include <QStandardItemModel>
-#include <QStandardItem>
 #include <QFile>
 #include <QStandardPaths>
 #include <product.h>
@@ -37,7 +31,7 @@
 #include <orderprint.h>
 
 OrderForm::OrderForm(QTabWidget *tabWidget, QWidget *parent)
-    : QWidget(parent), ui(new Ui::OrderForm), tabWidget(tabWidget), networkManager(new QNetworkAccessManager(this)), order()
+    : QWidget(parent), ui(new Ui::OrderForm), tabWidget(tabWidget)
 {
     ui->setupUi(this);
 
@@ -53,28 +47,25 @@ OrderForm::OrderForm(QTabWidget *tabWidget, QWidget *parent)
     QHBoxLayout *searchLayout = new QHBoxLayout(searchWidget);
 
     searchBox = new QLineEdit(this);
-    searchBox->setPlaceholderText("🔍 Search products...");
-    searchBox->setFixedHeight(35);
-    searchBox->setStyleSheet("padding: 5px; font-size: 14px; border-radius: 5px;");
+    searchBox->setPlaceholderText("Search products...");
+    searchBox->setFixedHeight(ScreenUtils::px(38));
 
     connect(searchBox, &QLineEdit::textChanged, this, &OrderForm::filterProducts);
 
     QPushButton *searchButton = new QPushButton("Search", this);
-    searchButton->setFixedSize(90, 25);
-    searchButton->setStyleSheet("background-color: #007bff; color: white; font-size: 14px; border-radius: 5px;");
-
-    searchButton->setFixedSize(80, 40);
+    searchButton->setObjectName("primaryButton");
+    searchButton->setFixedSize(ScreenUtils::px(90), ScreenUtils::px(38));
 
     searchLayout->addWidget(searchBox);
     searchLayout->addWidget(searchButton);
     searchWidget->setLayout(searchLayout);
 
-    topLeftLayout->addWidget(searchWidget);  // Add search bar to the top
+    topLeftLayout->addWidget(searchWidget);
 
     QWidget *topLeftWidget = new QWidget();
     gridLayout = new QGridLayout(topLeftWidget);
-    gridLayout->setContentsMargins(0, 0, 0, 0);
-    gridLayout->setSpacing(0);
+    gridLayout->setContentsMargins(8, 8, 8, 8);
+    gridLayout->setSpacing(12);
 
     topLeftWidget->setLayout(gridLayout);
 
@@ -83,7 +74,7 @@ OrderForm::OrderForm(QTabWidget *tabWidget, QWidget *parent)
     scrollArea->setWidget(topLeftWidget);
     TouchUtils::enableTouchScrolling(scrollArea);
 
-    topLeftLayout->addWidget(scrollArea);  // Add scrollable product grid below the search box
+    topLeftLayout->addWidget(scrollArea);
     topLeftContainer->setLayout(topLeftLayout);
 
     bottomLeftWidget = new QWidget();
@@ -99,40 +90,33 @@ OrderForm::OrderForm(QTabWidget *tabWidget, QWidget *parent)
     QWidget *rightPanel = new QWidget();
     QVBoxLayout *rightLayout = new QVBoxLayout(rightPanel);
 
-    QLabel *summaryLabel = new QLabel("📝 Order Summary", this);
-    summaryLabel->setStyleSheet("font-weight: bold; font-size: 16px;");
-
-    QFont boldFont;
-    boldFont.setBold(true);
-    boldFont.setPointSize(14);
-    summaryLabel->setFont(boldFont);
+    QLabel *summaryLabel = new QLabel("Order Summary", this);
+    summaryLabel->setObjectName("sectionHeader");
     rightLayout->addWidget(summaryLabel);
 
     QWidget *cartPanel = new QWidget();
+    cartPanel->setObjectName("cardPanel");
     cartLayout = new QVBoxLayout(cartPanel);
-
-    // Ensure cartPanel has a layout to hold widgets
-    cartPanel->setLayout(cartLayout);
+    cartLayout->setContentsMargins(8, 8, 8, 8);
+    cartLayout->setSpacing(8);
 
     QScrollArea *rightScrollArea = new QScrollArea();
     rightScrollArea->setWidgetResizable(true);
     rightScrollArea->setWidget(cartPanel);
     TouchUtils::enableTouchScrolling(rightScrollArea);
 
-    cartLayout->setContentsMargins(0, 0, 0, 0);
-    cartLayout->setSpacing(0);
-
     rightLayout->addWidget(rightScrollArea, 9);
 
     QWidget *summaryPanel = new QWidget();
+    summaryPanel->setObjectName("cardPanel");
     QGridLayout *summaryGridLayout = new QGridLayout(summaryPanel);
-    summaryGridLayout->setContentsMargins(4, 2, 4, 2);
-    summaryGridLayout->setSpacing(2);
+    summaryGridLayout->setContentsMargins(12, 10, 12, 10);
+    summaryGridLayout->setSpacing(8);
 
     summaryGridLayout->addWidget(new QLabel("Customer Name"), 0, 0);
     customerNameText = new QLineEdit();
     customerNameText->setPlaceholderText("Customer Name");
-    customerNameText->setFixedHeight(30);
+    customerNameText->setFixedHeight(ScreenUtils::px(34));
 
     connect(customerNameText, &QLineEdit::textChanged, this, &OrderForm::updateCurrentTabName);
 
@@ -142,21 +126,22 @@ OrderForm::OrderForm(QTabWidget *tabWidget, QWidget *parent)
     subTotalText = new QLineEdit();
     subTotalText->setPlaceholderText("Sub Total");
     subTotalText->setAlignment(Qt::AlignRight);
-    subTotalText->setFixedHeight(30);
+    subTotalText->setFixedHeight(ScreenUtils::px(34));
     summaryGridLayout->addWidget(subTotalText, 1, 1);
 
     summaryGridLayout->addWidget(new QLabel("Discount"), 2, 0);
     discountText = new QLineEdit();
     discountText->setPlaceholderText("Discount");
     discountText->setAlignment(Qt::AlignRight);
-    discountText->setFixedHeight(30);
+    discountText->setFixedHeight(ScreenUtils::px(34));
     summaryGridLayout->addWidget(discountText, 2, 1);
 
     summaryGridLayout->addWidget(new QLabel("Total"), 3, 0);
     totalText = new QLineEdit();
     totalText->setPlaceholderText("Total");
     totalText->setAlignment(Qt::AlignRight);
-    totalText->setFixedHeight(30);
+    totalText->setFixedHeight(ScreenUtils::px(34));
+    totalText->setObjectName("totalDisplay");
     summaryGridLayout->addWidget(totalText, 3, 1);
     summaryPanel->setLayout(summaryGridLayout);
 
@@ -164,32 +149,26 @@ OrderForm::OrderForm(QTabWidget *tabWidget, QWidget *parent)
 
     remarkText = new QTextEdit();
     remarkText->setPlaceholderText("Additional notes...");
-    remarkText->setFixedHeight(80);
+    remarkText->setFixedHeight(ScreenUtils::px(72));
     rightLayout->addWidget(remarkText, 1);
 
-    // Add horizontal layout with two buttons
     QHBoxLayout *buttonLayout = new QHBoxLayout();
-    QPushButton *confirmButton = new QPushButton("✔ Confirm", this);
-    QPushButton *printButton = new QPushButton("🖨 Print", this);
-    ;
+    QPushButton *confirmButton = new QPushButton("Confirm", this);
+    QPushButton *printButton = new QPushButton("Print", this);
 
-    // Adjust button sizes
-    confirmButton->setFixedSize(100, 40);
-    printButton->setFixedSize(100, 40);
+    confirmButton->setFixedSize(ScreenUtils::px(120), ScreenUtils::px(44));
+    printButton->setFixedSize(ScreenUtils::px(120), ScreenUtils::px(44));
 
-    confirmButton->setStyleSheet("background-color: #28a745; color: white; font-weight: bold;");
-    printButton->setStyleSheet("background-color: #007bff; color: white; font-weight: bold;");
+    confirmButton->setObjectName("successButton");
+    printButton->setObjectName("primaryButton");
 
-    // Add buttons to the horizontal layout
     buttonLayout->addWidget(confirmButton);
     buttonLayout->addWidget(printButton);
-    buttonLayout->setAlignment(Qt::AlignCenter); // Center the buttons
+    buttonLayout->setAlignment(Qt::AlignCenter);
 
-    // Create a container widget for the button layout
     QWidget *buttonContainer = new QWidget();
     buttonContainer->setLayout(buttonLayout);
 
-    // Add the button container to the right layout
     rightLayout->addWidget(buttonContainer);
 
     rightPanel->setLayout(rightLayout);
@@ -221,17 +200,14 @@ void OrderForm::fetchDataFromAPI() {
         QJsonDocument doc = QJsonDocument::fromJson(data);
         QJsonArray dataArray = doc.object()["data"].toArray();
         updateCategoryLeftPanel(dataArray);
-        qDebug() << "Loaded categories from cache.";
         return;
     }
 
-    QNetworkRequest requestCategory(QUrl(settingConfig.getApiEndpoint("menu", "category") + "/tier"));
-    requestCategory.setRawHeader("Authorization", "Bearer " + TokenManager::instance().getAccessToken().toUtf8());
-    requestCategory.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
-    QNetworkReply* replyCategory = networkManager->get(requestCategory);
-
-    connect(replyCategory, &QNetworkReply::finished, this, [this, replyCategory]() {
-        this->onDataReceived(replyCategory);
+    const QUrl url(settingConfig.getApiEndpoint("menu", "category") + "/tier");
+    ApiClient::instance().get(url, [this](const QJsonObject &response) {
+        onDataReceived(response);
+    }, [](const QString &message, int) {
+        qDebug() << "Category API error:" << message;
     });
 }
 
@@ -246,147 +222,83 @@ void OrderForm::fetchDataDetailProduct(QString id) {
         QJsonDocument doc = QJsonDocument::fromJson(data);
         QJsonArray dataArray = doc.object()["data"].toArray();
         updateProductLeftTopPanel(dataArray);
-        qDebug() << "Loaded products for category" << id << "from cache.";
         return;
     }
 
-    QNetworkRequest requestDetailProduct(QUrl(QString(settingConfig.getApiEndpoint("menu","product") + "/category/%1/price").arg(id)));
-    requestDetailProduct.setRawHeader("Authorization", "Bearer " + TokenManager::instance().getAccessToken().toUtf8());
-    requestDetailProduct.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
-    QNetworkReply* replyDetailProduct = networkManager->get(requestDetailProduct);
+    const QUrl url(QString(settingConfig.getApiEndpoint("menu","product") + "/category/%1/price").arg(id));
+    ApiClient::instance().get(url, [this, id](const QJsonObject &response) {
+        QJsonArray dataArray = response["data"].toArray();
 
-    connect(replyDetailProduct, &QNetworkReply::finished, this, [this, replyDetailProduct, id]() {
-        if (replyDetailProduct->error() != QNetworkReply::NoError) {
-            qDebug() << "API Error: " << replyDetailProduct->errorString();
-            return;
-        }
-
-        QByteArray responseData = replyDetailProduct->readAll();
-        if (responseData.isEmpty()) {
-            return;
-        }
-
-        // Save to per-category cache
         QString cachePath = QStandardPaths::writableLocation(QStandardPaths::CacheLocation)
                             + QString("/product_cache_%1.json").arg(id);
         QFile cacheFile(cachePath);
         if (cacheFile.open(QIODevice::WriteOnly)) {
-            cacheFile.write(responseData);
+            cacheFile.write(QJsonDocument(response).toJson());
             cacheFile.close();
-            qDebug() << "Cached products for category" << id << "to disk.";
         }
 
-        QJsonDocument jsonDoc = QJsonDocument::fromJson(responseData);
-        QJsonObject jsonObj = jsonDoc.object();
-        QJsonArray dataArray = jsonObj["data"].toArray();
-
         updateProductLeftTopPanel(dataArray);
-
-        replyDetailProduct->deleteLater();
+    }, [](const QString &message, int) {
+        qDebug() << "Product API error:" << message;
     });
 }
 
 
-void OrderForm::onDataReceived(QNetworkReply *reply) {
-    if (reply->error() != QNetworkReply::NoError) {
-        qDebug() << "API Error: " << reply->errorString();
-        return;
-    }
+void OrderForm::onDataReceived(const QJsonObject &response) {
+    QJsonArray dataArray = response["data"].toArray();
 
-    QByteArray responseData = reply->readAll();
-    if (responseData.isEmpty()) {
-        return;
-    }
-
-    QJsonDocument jsonDoc = QJsonDocument::fromJson(responseData);
-    QJsonObject jsonObj = jsonDoc.object();
-    QJsonArray dataArray = jsonObj["data"].toArray();
-
-    // Write to cache
     QString cachePath = QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + "/category_cache.json";
     QFile cacheFile(cachePath);
     if (cacheFile.open(QIODevice::WriteOnly)) {
-        cacheFile.write(responseData);
+        cacheFile.write(QJsonDocument(response).toJson());
         cacheFile.close();
-        qDebug() << "Cached API response to disk.";
     }
 
     updateCategoryLeftPanel(dataArray);
-    reply->deleteLater();
 }
 
 void OrderForm::updateCategoryLeftPanel(const QJsonArray &dataArray) {
-    // 🔄 Clear existing category buttons efficiently
     while (QLayoutItem *child = buttonGridLayout->takeAt(0)) {
         if (child->widget()) {
-            delete child->widget();  // ✅ Delete the widget safely
+            delete child->widget();
         }
-        delete child; // ❌ Avoid double deletion issue
+        delete child;
     }
 
     int row = 0, col = 0;
-    const int maxColumns = 5;  // 🔢 Define grid layout columns
+    const int maxColumns = 5;
     QString firstCatId;
-    const int buttonWidth = 140;
-    const int buttonHeight = 40;
+    const int buttonWidth = ScreenUtils::px(140);
+    const int buttonHeight = ScreenUtils::px(40);
 
     for (const QJsonValue &value : dataArray) {
         QJsonObject item = value.toObject();
         QString name = item["name"].toString();
         QString id = QString::number(item["id"].toInt());
 
-        // 🆕 Create a new category button
         QPushButton *button = new QPushButton(name);
+        button->setObjectName("primaryButton");
         button->setFixedSize(buttonWidth, buttonHeight);
-        button->setStyleSheet("background-color: #007bff; color: white; font-size: 14px; font-weight: bold; border-radius: 5px;");
 
         connect(button, &QPushButton::clicked, this, [this, id]() {
             this->fetchDataDetailProduct(id);
         });
 
-        // 📌 Select the first category by default
         if (row == 0 && col == 0) {
             firstCatId = id;
         }
 
         buttonGridLayout->addWidget(button, row, col);
 
-        // 🔄 Manage Grid Layout Alignment
         if (++col >= maxColumns) {
             col = 0;
             row++;
         }
-
-        // 🏃 Keep UI Responsive for Large Data
-        if (row % 5 == 0) {
-            QApplication::processEvents();
-        }
     }
 
-    // 📥 Load first category automatically if available
     if (!firstCatId.isEmpty()) {
         this->fetchDataDetailProduct(firstCatId);
     }
-}
-
-void OrderForm::onDataDetailProductReceived(QNetworkReply *reply) {
-    if (reply->error() != QNetworkReply::NoError) {
-        qDebug() << "API Error: " << reply->errorString();
-        return;
-    }
-
-    QByteArray responseData = reply->readAll();
-    if (responseData.isEmpty()) {
-        return;
-    }
-
-    QJsonDocument jsonDoc = QJsonDocument::fromJson(responseData);
-    QJsonObject jsonObj = jsonDoc.object();
-    QJsonArray dataArray = jsonObj["data"].toArray();
-
-    this->updateProductLeftTopPanel(dataArray);
-
-    reply->deleteLater();
 }
 
 void OrderForm::updateProductLeftTopPanel(const QJsonArray &dataArray) {
@@ -400,7 +312,7 @@ void OrderForm::updateProductLeftTopPanel(const QJsonArray &dataArray) {
     products.clear();
 
     int row = 0, col = 0;
-    int maxColumns = 3;
+    int maxColumns = 4;
 
     for (const QJsonValue &value : dataArray) {
         QJsonObject item = value.toObject();
@@ -438,20 +350,18 @@ void OrderForm::printReceipt() {
 
     QJsonObject jsonObject;
 
-    // Add basic order fields
-    jsonObject["id"] = order->id;
-    jsonObject["customerId"] = order->customerId;
+    jsonObject["id"] = order.id;
+    jsonObject["customerId"] = order.customerId;
     jsonObject["customerName"] = customerNameText->text();
     jsonObject["remark"] = remarkText->toPlainText();
-    jsonObject["subTotal"] = order->subTotal;
-    jsonObject["subTotalTax"] = order->subTotalTax;
-    jsonObject["subTotalDiscount"] = order->subTotalDiscount;
-    jsonObject["grandTotal"] = order->grandTotal;
+    jsonObject["subTotal"] = order.subTotal;
+    jsonObject["subTotalTax"] = order.subTotalTax;
+    jsonObject["subTotalDiscount"] = order.subTotalDiscount;
+    jsonObject["grandTotal"] = order.grandTotal;
 
-    // Prepare orderItems array
     QJsonArray orderItemsArray;
 
-    for (const OrderItem &item : order->orderItems) {
+    for (const OrderItem &item : order.orderItems) {
         QJsonObject itemObj;
         itemObj["productName"] = item.productName;
         itemObj["categoryId"] = item.categoryId;
@@ -464,7 +374,6 @@ void OrderForm::printReceipt() {
             skuObj["subTotal"] = sku.subTotal;
             skuObj["price"] = sku.price;
 
-            // Add more fields from SKU if needed
             skusArray.append(skuObj);
         }
 
@@ -472,9 +381,7 @@ void OrderForm::printReceipt() {
         orderItemsArray.append(itemObj);
     }
 
-    // Add orderItems array to jsonObject
     jsonObject["orderDetails"] = orderItemsArray;
-
 
     OrderPrint printer(jsonObject);
     printer.sendToKitchenPrinter();
@@ -503,16 +410,13 @@ QWidget* OrderForm::createProductGroupWidget(const Product &product) {
     productGroupLayout->setSpacing(0);
 
     SkuWidget *skuWidget = new SkuWidget(product, this);
-
+    skuWidget->setObjectName("skuCard");
 
     productGroupLayout->addWidget(new ProductWidget(product, productGroupWidget), 3);
     productGroupLayout->addWidget(skuWidget, 7);
 
-    bool ok = connect(skuWidget, &SkuWidget::updateQuantity,
-                      this, &OrderForm::updateQuantity);
-
-    qDebug() << "Signal connected?" << ok;
-    qDebug() << "Signal connected Product?" << product.name;
+    connect(skuWidget, &SkuWidget::updateQuantity,
+            this, &OrderForm::updateQuantity);
 
     productGroupWidget->setLayout(productGroupLayout);
 
@@ -521,7 +425,7 @@ QWidget* OrderForm::createProductGroupWidget(const Product &product) {
 
 void OrderForm::onConfirmButtonClicked() {
     QJsonArray orderItemsArray;
-    for (const OrderItem &orderItem : order->orderItems) {
+    for (const OrderItem &orderItem : order.orderItems) {
         QJsonObject orderItemObj;
         orderItemObj["productId"] = orderItem.productId;
         orderItemObj["productName"] = orderItem.productName;
@@ -549,64 +453,51 @@ void OrderForm::onConfirmButtonClicked() {
     orderData["orderDetails"] = orderItemsArray;
     orderData["discount"] = discountText->text();
 
-    QJsonDocument jsonDoc(orderData);
-    QByteArray jsonData = jsonDoc.toJson();
+    QByteArray jsonData = QJsonDocument(orderData).toJson();
 
-    QNetworkRequest request(QUrl(settingConfig.getApiEndpoint("order","confirm")));
-    request.setRawHeader("Authorization", "Bearer " + TokenManager::instance().getAccessToken().toUtf8());
-    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
-
-    QNetworkReply *reply = networkManager->post(request, jsonData);
-    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
-        if (reply->error() == QNetworkReply::NoError) {
-
-            QByteArray responseData = reply->readAll();
-            if (responseData.isEmpty()) {
-                return;
-            }
-
-            QJsonDocument jsonDoc = QJsonDocument::fromJson(responseData);
-            QJsonObject jsonObj = jsonDoc.object();
-
-            OrderPaymentPopup popup(jsonObj["data"].toObject(), this->tabWidget);
-            popup.exec();
-
-        } else {
-            qDebug() << "Order placement failed: " << reply->errorString();
-        }
-        reply->deleteLater();
+    const QUrl url(settingConfig.getApiEndpoint("order","confirm"));
+    ApiClient::instance().post(url, jsonData, [this](const QJsonObject &response) {
+        QJsonObject data = response["data"].toObject();
+        OrderPaymentPopup popup(data, this->tabWidget);
+        popup.exec();
+    }, [this](const QString &message, int) {
+        qDebug() << "Order placement failed:" << message;
+        QMessageBox::warning(this, "Order Failed", "Failed to place order. Please try again.");
     });
 }
 
 void OrderForm::populateOrderOnRightPanel() {
-    QWidget *cartItemWidget = new QWidget();
-
     cartLayout->setAlignment(Qt::AlignTop);
 
-    QLayoutItem *child;
-    while ((child = cartLayout->takeAt(0)) != nullptr) {
-        delete child->widget();
-        delete child;
+    for (auto it = cartWidgets.begin(); it != cartWidgets.end();) {
+        bool exists = false;
+        for (const OrderItem &orderItem : order.orderItems) {
+            if (orderItem.productId == it.key()) {
+                exists = true;
+                break;
+            }
+        }
+        if (!exists) {
+            cartLayout->removeWidget(it.value());
+            it.value()->deleteLater();
+            it = cartWidgets.erase(it);
+        } else {
+            ++it;
+        }
     }
 
-    qDebug() << "populateOrderOnRightPanel total items : " << order->orderItems.size();
-
     double subTotal = 0;
-    for (const OrderItem &orderItem: order->orderItems) {
-        OrderCartWidget *orderCartItem = new OrderCartWidget(orderItem, this, cartItemWidget);
-
-        qDebug() << "populateOrderOnRightPanel Item : " << orderItem.productName;
-
-        if (orderCartItem->getTotal()) {
-            subTotal += (orderCartItem->getTotal());
+    for (const OrderItem &orderItem : order.orderItems) {
+        OrderCartWidget *cartWidget = cartWidgets.value(orderItem.productId, nullptr);
+        if (!cartWidget) {
+            cartWidget = new OrderCartWidget(orderItem, this, this);
+            cartWidgets.insert(orderItem.productId, cartWidget);
+            cartLayout->addWidget(cartWidget);
+            connect(cartWidget, &OrderCartWidget::updateQuantity, this, &OrderForm::updateQuantity);
+        } else {
+            cartWidget->updateItem(orderItem);
         }
-        cartLayout->addWidget(orderCartItem);
-
-        bool ok = connect(orderCartItem, &OrderCartWidget::updateQuantity,
-                          this, &OrderForm::updateQuantity); // connect to OrderForm's signal
-
-        qDebug() << "populateOrderOnRightPanel Signal to OrderChart : " << ok;
-
+        subTotal += cartWidget->getTotal();
     }
 
     subTotalText->setText(locale.toString(subTotal, 'f', 0));
@@ -614,92 +505,102 @@ void OrderForm::populateOrderOnRightPanel() {
     double discount = discountText->text().toDouble();
     totalText->setText(locale.toString(subTotal - discount, 'f', 0));
 
+    updateTabSubtitle();
 }
 
 bool OrderForm::checkSku(const Sku &sku, const bool &add, OrderItem &orderItem) {
-
-    for (OrderItemSku &orderItemSku : orderItem.orderItemSkus) {
-        if (sku.id == orderItemSku.skuId) {
+    for (auto it = orderItem.orderItemSkus.begin(); it != orderItem.orderItemSkus.end(); ++it) {
+        if (it->skuId == sku.id) {
             if (add) {
-                orderItemSku.quantity++;
+                it->quantity++;
             } else {
-                orderItemSku.quantity--;
+                it->quantity--;
             }
 
-            double total = orderItemSku.quantity*orderItemSku.price;
-            orderItemSku.subTotal = total;
+            it->subTotal = it->quantity * it->price;
 
-            if (orderItemSku.quantity==0) {
-                removeSku(orderItem.productId, sku);
+            if (it->quantity <= 0) {
+                orderItem.orderItemSkus.erase(it);
             }
 
             return true;
         }
     }
+
+    if (add) {
+        orderItem.orderItemSkus.append(OrderItemSku(sku.id, sku.name, 1, sku.price, sku.price));
+        return true;
+    }
+
     return false;
 }
 
-void OrderForm::updateCurrentTabName(const QString &newName) {
-    int currentIndex = tabWidget->currentIndex();
-    if (currentIndex != -1) {  // Ensure a valid tab is selected
-        tabWidget->setTabText(currentIndex, "New Order - " + newName);
-    }
+void OrderForm::setTabButtonWidget(OrderTabButton *tabButton, const QString &orderTitle) {
+    this->tabButton = tabButton;
+    this->tabName = orderTitle;
+    updateTabSubtitle();
 }
 
-void OrderForm::removeSku(const int &productId, const Sku &sku) {
-    bool isRemoveItem = false; // Initialize the flag
+void OrderForm::updateTabSubtitle() {
+    if (!tabButton) {
+        return;
+    }
 
-    for (OrderItem &orderItem : order->orderItems) {
-        if (orderItem.productId == productId) {
-            if (orderItem.orderItemSkus.size() > 1) {
-                // Remove the SKU from the order item
-                orderItem.orderItemSkus.erase(
-                    std::remove_if(orderItem.orderItemSkus.begin(), orderItem.orderItemSkus.end(),
-                                   [&sku](const OrderItemSku &dsku) {
-                                       return dsku.skuId == sku.id;
-                                   }),
-                    orderItem.orderItemSkus.end());
-            } else {
-                isRemoveItem = true; // Mark for deletion
-            }
+    int totalQuantity = 0;
+    double subTotal = 0;
+    for (const OrderItem &orderItem : order.orderItems) {
+        for (const OrderItemSku &sku : orderItem.orderItemSkus) {
+            totalQuantity += sku.quantity;
+            subTotal += sku.subTotal;
         }
     }
 
-    if (isRemoveItem) {
-        order->orderItems.erase(std::remove_if(order->orderItems.begin(), order->orderItems.end(),
-                                              [productId](const OrderItem &item) { return item.productId == productId; }),
-                               order->orderItems.end());
+    double discount = discountText->text().toDouble();
+    double total = subTotal - discount;
+
+    QString totalStr;
+    if (total >= 1000) {
+        totalStr = locale.toString(total / 1000.0, 'f', 1) + "K";
+    } else {
+        totalStr = locale.toString(total, 'f', 0);
     }
 
-    populateOrderOnRightPanel();
+    tabButton->setSubtitle(QString("%1 items   Rp %2").arg(totalQuantity).arg(totalStr));
+}
+
+void OrderForm::updateCurrentTabName(const QString &newName) {
+    if (!tabButton) {
+        return;
+    }
+
+    if (newName.isEmpty()) {
+        tabButton->setTitle(tabName);
+    } else {
+        tabButton->setTitle(tabName + " - " + newName);
+    }
 }
 
 void OrderForm::updateOrderData(const Product &product, const Sku &sku, const bool &add) {
-    if (!order) {
-        order = new Order();  // Ensure 'order' is initialized
-        qDebug() << "Order was null. Initialized new order.";
-    }
-
     bool found = false;
 
-    for (OrderItem &orderItem : order->orderItems) {
-        if (orderItem.productId == product.id) {
-            if (!checkSku(sku, add, orderItem)) {
-                OrderItemSku orderItemSku(sku.id, sku.name, 1, sku.price, sku.price);
-                orderItem.orderItemSkus.append(orderItemSku);
+    for (int i = 0; i < order.orderItems.size(); ++i) {
+        if (order.orderItems[i].productId == product.id) {
+            checkSku(sku, add, order.orderItems[i]);
+
+            if (order.orderItems[i].orderItemSkus.isEmpty()) {
+                order.orderItems.removeAt(i);
             }
+
             found = true;
             break;
         }
     }
 
-    qDebug() << "Updating quantity for Prod:" << product.name << product.id << " Found:" << found;
-
-    if (order->orderItems.isEmpty() || !found) {
+    if (!found) {
         QList<OrderItemSku> orderItemSkus = {
             OrderItemSku(sku.id, sku.name, 1, sku.price, sku.price)};
         OrderItem orderItem(product.id, product.name, product.categoryId, orderItemSkus);
-        order->orderItems.append(orderItem);
+        order.orderItems.append(orderItem);
     }
 
     populateOrderOnRightPanel();
@@ -707,10 +608,7 @@ void OrderForm::updateOrderData(const Product &product, const Sku &sku, const bo
 
 
 void OrderForm::updateQuantity(const Product &product, const Sku &sku, bool add) {
-    qDebug() << "Updating quantity for Product:" << product.name << "Add:" << add;
-    qDebug() << "Updating quantity for SKU:" << sku.name << "Add:" << add;
     updateOrderData(product, sku, add);
-    populateOrderOnRightPanel(); // If this refreshes UI
 }
 
 
@@ -722,7 +620,7 @@ void OrderForm::filterProducts(const QString &query) {
     }
 
     int row = 0, col = 0;
-    int maxColumns = 3;
+    int maxColumns = 4;
 
     for (const Product &product : products) {
         if (product.name.contains(query, Qt::CaseInsensitive)) {

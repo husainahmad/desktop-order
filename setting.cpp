@@ -1,6 +1,7 @@
 #include "setting.h"
 #include <QCoreApplication>
 #include <QDir>
+#include <QFile>
 
 Setting::Setting()
     : settings(QDir(QCoreApplication::applicationDirPath()).filePath("../../../config.app.ini"), QSettings::IniFormat)
@@ -35,4 +36,10 @@ QVariant Setting::getValue(const QString &key, const QVariant &defaultValue) {
 
 void Setting::sync() {
     settings.sync();
+
+    // Restrict access to the config file (contains auth tokens).
+    QFile configFile(settings.fileName());
+    if (configFile.exists()) {
+        configFile.setPermissions(QFileDevice::ReadOwner | QFileDevice::WriteOwner);
+    }
 }

@@ -1,9 +1,10 @@
 #include "toast.h"
+#include "screenutils.h"
 
 Toast::Toast(QWidget *parent, const QString &message, int duration)
     : QLabel(parent) {
     setText(message);
-    setStyleSheet("background-color: rgba(0, 0, 0, 180); color: white; padding: 10px; border-radius: 5px;");
+    setStyleSheet(ScreenUtils::qss("background-color: rgba(0, 0, 0, 180); color: white; padding: 10px; border-radius: 5px;"));
     setAlignment(Qt::AlignCenter);
     setWindowFlags(Qt::FramelessWindowHint | Qt::Tool | Qt::WindowStaysOnTopHint);
     adjustSize();

@@ -2,6 +2,7 @@
 #include "tokenmanager.h"
 #include "screenutils.h"
 #include "touchutils.h"
+#include "apiclient.h"
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -25,7 +26,6 @@ DailyReportScreen::DailyReportScreen(QWidget *parent)
     , orderVolumeTableWidget(new QTableWidget(this))
     , startDateEdit(new QDateEdit(this))
     , endDateEdit(new QDateEdit(this))
-    , networkManager(new QNetworkAccessManager(this))
 {
     locale = QLocale::English;
 
@@ -34,8 +34,8 @@ DailyReportScreen::DailyReportScreen(QWidget *parent)
 
     QVBoxLayout *mainLayout = new QVBoxLayout(this);
 
-    QLabel *titleLabel = new QLabel("📊 Daily Report", this);
-    titleLabel->setStyleSheet("font-size: 20px; font-weight: bold; color: white;");
+    QLabel *titleLabel = new QLabel("Daily Report", this);
+    titleLabel->setObjectName("sectionHeader");
     titleLabel->setAlignment(Qt::AlignCenter);
     mainLayout->addWidget(titleLabel);
 
@@ -43,36 +43,24 @@ DailyReportScreen::DailyReportScreen(QWidget *parent)
     QHBoxLayout *filterLayout = new QHBoxLayout(filterWidget);
 
     QLabel *startLabel = new QLabel("Start:", this);
-    startLabel->setStyleSheet("color: white; font-size: 14px;");
+    startLabel->setStyleSheet(ScreenUtils::qss("font-size: 14px; font-weight: 600; color: #334155;"));
 
     startDateEdit->setCalendarPopup(true);
     startDateEdit->setDate(QDate::currentDate());
     startDateEdit->setDisplayFormat("yyyy-MM-dd");
 
     QLabel *endLabel = new QLabel("End:", this);
-    endLabel->setStyleSheet("color: white; font-size: 14px;");
+    endLabel->setStyleSheet(ScreenUtils::qss("font-size: 14px; font-weight: 600; color: #334155;"));
 
     endDateEdit->setCalendarPopup(true);
     endDateEdit->setDate(QDate::currentDate());
     endDateEdit->setDisplayFormat("yyyy-MM-dd");
 
-    QPushButton *loadButton = new QPushButton("🔍 Load Report", this);
-    loadButton->setStyleSheet("QPushButton {"
-                              "background-color: #007bff; color: white;"
-                              "border-radius: 8px; padding: 8px 16px; font-size: 14px;"
-                              "border: 2px solid #0056b3;"
-                              "} QPushButton:hover {"
-                              "background-color: #0056b3;"
-                              "}");
+    QPushButton *loadButton = new QPushButton("Load Report", this);
+    loadButton->setObjectName("primaryButton");
 
-    QPushButton *backButton = new QPushButton("⬅ Back", this);
-    backButton->setStyleSheet("QPushButton {"
-                              "background-color: #6c757d; color: white;"
-                              "border-radius: 8px; padding: 8px 16px; font-size: 14px;"
-                              "border: 2px solid #495057;"
-                              "} QPushButton:hover {"
-                              "background-color: #495057;"
-                              "}");
+    QPushButton *backButton = new QPushButton("Back", this);
+    backButton->setObjectName("secondaryButton");
 
     filterLayout->addWidget(backButton);
     filterLayout->addStretch();
@@ -90,22 +78,13 @@ DailyReportScreen::DailyReportScreen(QWidget *parent)
     tableWidget->setHorizontalHeaderLabels({"Date", "Product", "QTY", "Net Sales", "Discount"});
     tableWidget->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
     tableWidget->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    tableWidget->setStyleSheet(
-        "QHeaderView::section {"
-        "   background-color: black;"
-        "   color: white;"
-        "   font-weight: bold;"
-        "   font-size: 14px;"
-        "   padding: 6px;"
-        "   border: 1px solid #444;"
-        "}"
-        );
+    tableWidget->setAlternatingRowColors(true);
     TouchUtils::enableItemViewScrolling(tableWidget);
 
     mainLayout->addWidget(tableWidget);
 
-    QLabel *orderVolumeTitleLabel = new QLabel("📈 Order Volume", this);
-    orderVolumeTitleLabel->setStyleSheet("font-size: 16px; font-weight: bold; color: white; margin-top: 10px;");
+    QLabel *orderVolumeTitleLabel = new QLabel("Order Volume", this);
+    orderVolumeTitleLabel->setObjectName("sectionHeader");
     orderVolumeTitleLabel->setAlignment(Qt::AlignCenter);
     mainLayout->addWidget(orderVolumeTitleLabel);
 
@@ -113,17 +92,8 @@ DailyReportScreen::DailyReportScreen(QWidget *parent)
     orderVolumeTableWidget->setHorizontalHeaderLabels({"Total Orders", "Peak Time Orders", "Non Peak Time Orders"});
     orderVolumeTableWidget->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
     orderVolumeTableWidget->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    orderVolumeTableWidget->setStyleSheet(
-        "QHeaderView::section {"
-        "   background-color: black;"
-        "   color: white;"
-        "   font-weight: bold;"
-        "   font-size: 14px;"
-        "   padding: 6px;"
-        "   border: 1px solid #444;"
-        "}"
-        );
-    orderVolumeTableWidget->setMaximumHeight(120);
+    orderVolumeTableWidget->setAlternatingRowColors(true);
+    orderVolumeTableWidget->setMaximumHeight(ScreenUtils::px(120));
     TouchUtils::enableItemViewScrolling(orderVolumeTableWidget);
 
     mainLayout->addWidget(orderVolumeTableWidget);
@@ -142,27 +112,17 @@ void DailyReportScreen::fetchDailyReport() {
     QString startDateTime = startDateEdit->date().toString("yyyy-MM-dd") + "T00:00:00";
     QString endDateTime = endDateEdit->date().toString("yyyy-MM-dd") + "T23:59:59";
 
-    QString dailyUrl = settingConfig.getApiEndpoint("reports", "daily");
-    QUrl url(dailyUrl);
+    QUrl url(settingConfig.getApiEndpoint("reports", "daily"));
     QUrlQuery query;
     query.addQueryItem("start", startDateTime);
     query.addQueryItem("end", endDateTime);
     url.setQuery(query);
 
-    QNetworkRequest request(url);
-    request.setRawHeader("Authorization", "Bearer " + TokenManager::instance().getAccessToken().toUtf8());
-    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
-
-    QNetworkReply* reply = networkManager->get(request);
-
-    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
-        if (reply->error() == QNetworkReply::NoError) {
-            parseDailyReportResponse(reply->readAll());
-        } else {
-            qDebug() << "Daily Report API error:" << reply->errorString();
-            QMessageBox::warning(this, "Daily Report Error", "Failed to fetch daily report.");
-        }
-        reply->deleteLater();
+    ApiClient::instance().get(url, [this](const QJsonObject &response) {
+        parseDailyReportResponse(QJsonDocument(response).toJson(QJsonDocument::Compact));
+    }, [this](const QString &message, int) {
+        qDebug() << "Daily Report API error:" << message;
+        QMessageBox::warning(this, "Daily Report Error", "Failed to fetch daily report.");
     });
 }
 
@@ -249,27 +209,17 @@ void DailyReportScreen::fetchOrderVolumeReport() {
     QString startDateTime = startDateEdit->date().toString("yyyy-MM-dd") + "T00:00:00";
     QString endDateTime = endDateEdit->date().toString("yyyy-MM-dd") + "T23:59:59";
 
-    QString volumeUrl = settingConfig.getApiEndpoint("reports", "order-volume");
-    QUrl url(volumeUrl);
+    QUrl url(settingConfig.getApiEndpoint("reports", "order-volume"));
     QUrlQuery query;
     query.addQueryItem("start", startDateTime);
     query.addQueryItem("end", endDateTime);
     url.setQuery(query);
 
-    QNetworkRequest request(url);
-    request.setRawHeader("Authorization", "Bearer " + TokenManager::instance().getAccessToken().toUtf8());
-    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
-
-    QNetworkReply* reply = networkManager->get(request);
-
-    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
-        if (reply->error() == QNetworkReply::NoError) {
-            parseOrderVolumeReportResponse(reply->readAll());
-        } else {
-            qDebug() << "Order Volume API error:" << reply->errorString();
-            QMessageBox::warning(this, "Order Volume Error", "Failed to fetch order volume report.");
-        }
-        reply->deleteLater();
+    ApiClient::instance().get(url, [this](const QJsonObject &response) {
+        parseOrderVolumeReportResponse(QJsonDocument(response).toJson(QJsonDocument::Compact));
+    }, [this](const QString &message, int) {
+        qDebug() << "Order Volume API error:" << message;
+        QMessageBox::warning(this, "Order Volume Error", "Failed to fetch order volume report.");
     });
 }
 

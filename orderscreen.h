@@ -3,15 +3,11 @@
 
 #include <QWidget>
 #include <QTabWidget>
-#include <QTableWidget>
-#include <QLineEdit>
 #include <QPushButton>
 #include <QVBoxLayout>
-#include <QFormLayout>
-#include <QListWidget>
-#include <QNetworkAccessManager>
-#include <QLabel>
+#include <QLocale>
 #include "setting.h"
+
 namespace Ui {
 class OrderScreen;
 }
@@ -29,49 +25,31 @@ protected:
 
 private slots:
     void onOrderClicked();
-    void addProductToList();
     void fetchDataFromAPI();
     void parseJsonResponse(const QByteArray &responseData);
     void onTabChanged(int index);
-    void onDateChanged(const QDate &selectedDate);
     void onSettlementClicked();
     void onDailyReportClicked();
     void onSalesReportClicked();
     void onSettingsClicked();
     void onLogoutClicked();
+
 private:
     Ui::OrderScreen *ui;
     QTabWidget *tabWidget;
-    QTableWidget *tableWidget;
     QWidget *firstTab;
-    QLabel *titleLabel;
-    QPushButton *summaryButton;
     QPushButton *settingsButton;
     QPushButton *logoutButton;
-
-    // Input fields for order details
-    QLineEdit *storeIdInput;
-    QLineEdit *storeNameInput;
-    QLineEdit *customerNameInput;
-    QLineEdit *remarkInput;
-    QListWidget *productListWidget;
-
-    // Input fields for adding a product
-    QLineEdit *productIdInput;
-    QLineEdit *productNameInput;
-    QLineEdit *skuIdInput;
-    QLineEdit *skuNameInput;
-    QLineEdit *quantityInput;
-    QLineEdit *productRemarkInput;
 
     QVBoxLayout *summaryLayout;
     QWidget *summaryWidget;
     QVBoxLayout *ordersLayout;
     QWidget *ordersWidget;
 
-    QNetworkAccessManager *networkManager;
     Setting settingConfig;
     QLocale locale;
+    int orderNumberCounter = 0;
+    bool exitConfirmed = false;
 };
 
 #endif // ORDERSCREEN_H

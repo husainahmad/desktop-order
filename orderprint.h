@@ -14,6 +14,7 @@ public:
     void sendToKitchenPrinter();
     void sendSettlementToReceiptPrinter();
     bool sendRawDataToPrinter(const QString &printerName, const QByteArray &data);
+    static bool sendRaw(const QString &printerName, const QByteArray &data);
 private slots:
 
 private:

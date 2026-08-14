@@ -5,6 +5,7 @@
 #include <QPixmap>
 #include <QLocale>
 #include "product.h"
+#include "screenutils.h"
 
 ProductWidget::ProductWidget(Product product, QWidget *parent)
     : QWidget(parent), ui(new Ui::ProductWidget)
@@ -14,12 +15,12 @@ ProductWidget::ProductWidget(Product product, QWidget *parent)
 
     // Create layout
     QVBoxLayout *productLayout = new QVBoxLayout(this);
-    productLayout->setContentsMargins(5, 5, 5, 5);
-    productLayout->setSpacing(5);
+    productLayout->setContentsMargins(ScreenUtils::px(5), ScreenUtils::px(5), ScreenUtils::px(5), ScreenUtils::px(5));
+    productLayout->setSpacing(ScreenUtils::px(5));
 
     // Create image label
     QLabel *imageLabel = new QLabel(this);
-    imageLabel->setFixedSize(100, 100); // Ensure consistent size
+    imageLabel->setFixedSize(ScreenUtils::px(100), ScreenUtils::px(100)); // Ensure consistent size
     imageLabel->setAlignment(Qt::AlignCenter);
 
     // Load image
@@ -34,25 +35,30 @@ ProductWidget::ProductWidget(Product product, QWidget *parent)
     QLabel *nameLabel = new QLabel(product.name, this);
     nameLabel->setAlignment(Qt::AlignCenter);
     nameLabel->setWordWrap(true); // Allow multi-line product names
-    nameLabel->setStyleSheet("font-size: 14px; font-weight: bold; color: #333;");
+    nameLabel->setStyleSheet(ScreenUtils::qss("font-size: 14px; font-weight: bold; color: #1f2937;"));
 
     // Add widgets to layout
     productLayout->addWidget(imageLabel);
     productLayout->addWidget(nameLabel);
     productLayout->setAlignment(Qt::AlignCenter);
 
-    // Apply styles
-    setStyleSheet(
-        "QWidget {"
-        "   border: 1px solid #ccc;"
-        "   border-radius: 8px;"
-        "   background-color: #f9f9f9;"
+    // Apply card style (hover effect is handled by the global theme)
+    setObjectName("productCard");
+    setStyleSheet(ScreenUtils::qss(
+        "QWidget#productCard {"
+        "   border: 1px solid #e2e8f0;"
+        "   border-radius: 12px;"
+        "   background-color: #ffffff;"
         "   padding: 10px;"
         "}"
-        "QLabel {"
-        "   font-family: Arial;"
+        "QWidget#productCard:hover {"
+        "   border: 1px solid #2563eb;"
+        "   background-color: #f0f6ff;"
         "}"
-        );
+        "QLabel {"
+        "   background: transparent;"
+        "}"
+        ));
 
     setLayout(productLayout);
 }
@@ -70,7 +76,7 @@ void ProductWidget::setImageFromBase64(QLabel *label, const QString &base64Strin
 
     // Convert QImage to QPixmap and set it to QLabel
     label->setPixmap(QPixmap::fromImage(image));
-    label->setFixedSize(110, 110);
+    label->setFixedSize(ScreenUtils::px(110), ScreenUtils::px(110));
     label->setScaledContents(true);  // Ensure image scales properly in QLabel
 }
 

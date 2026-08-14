@@ -98,7 +98,7 @@ OrderSummary::OrderSummary(const QJsonArray &dataArray, QWidget *parent)
     QVBoxLayout *mainLayout = new QVBoxLayout(this);
     mainLayout->setSpacing(0);
 
-    QString titleString = "🔝 Top 50 Best-Selling Items | Total Order : " + formattedCount + " | CASH : Rp. " + QLocale(QLocale::English).toString(cashTotal, 'f', 0) +
+    QString titleString = "Top 50 Best-Selling Items | Total Order : " + formattedCount + " | CASH : Rp. " + QLocale(QLocale::English).toString(cashTotal, 'f', 0) +
                           " | QRIS : Rp. " + QLocale(QLocale::English).toString(qrTotal, 'f', 0) +
                           " | CARD : Rp. " + QLocale(QLocale::English).toString(cardTotal, 'f', 0) +
                           " | VOID : Rp. " + QLocale(QLocale::English).toString(voidTotal, 'f', 0) +
@@ -106,7 +106,8 @@ OrderSummary::OrderSummary(const QJsonArray &dataArray, QWidget *parent)
                           " | TOTAL : Rp. " + QLocale(QLocale::English).toString(grandTotal - voidTotal - confirmTotal, 'f', 0);
 
     QLabel *titleLabel = new QLabel(titleString, this);
-    titleLabel->setStyleSheet("font-size: 15px; font-weight: bold; color: white;");
+    titleLabel->setObjectName("sectionHeader");
+    titleLabel->setWordWrap(true);
     mainLayout->addWidget(titleLabel);
 
     // Step 4: Display Summary Table
@@ -127,16 +128,7 @@ OrderSummary::OrderSummary(const QJsonArray &dataArray, QWidget *parent)
     }
 
     // Style the table
-    summaryTable->setStyleSheet(
-        "QHeaderView::section {"
-        "   background-color: black;"  // Black background
-        "   color: white;"              // White text
-        "   font-weight: bold;"         // Bold font
-        "   font-size: 14px;"           // Font size
-        "   padding: 6px;"              // Padding inside header cells
-        "   border: 1px solid #444;"    // Slight border for separation
-        "}"
-        );
+    summaryTable->setAlternatingRowColors(true);
 
     // Add table to layout
     TouchUtils::enableItemViewScrolling(summaryTable);

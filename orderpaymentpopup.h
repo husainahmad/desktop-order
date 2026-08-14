@@ -5,14 +5,13 @@
 #include <QJsonObject>
 #include <QLabel>
 #include <QTabWidget>
-#include <QNetworkAccessManager>
 #include <QSettings>
 #include <QGridLayout>
 #include <QButtonGroup>
 #include "setting.h"
 
 class QPushButton;
-class QTextBrowser;
+class QTableWidget;
 class QLocale;
 
 class OrderPaymentPopup : public QDialog {
@@ -28,20 +27,16 @@ private slots:
     void onCashButtonClicked();
     void clearCashAmount();
     void setExactCash();
-    void payCash();
 
 private:
     void updateCashDisplay();
 
-    QNetworkAccessManager *networkManager;
     QJsonObject orderDetails;
     QButtonGroup *paymentGroup;
     QPushButton *qrPaymentBtn;
     QPushButton *cardPaymentBtn;
     QPushButton *cashPaymentBtn;
-    QTextBrowser *totalHtmlWidget;
     QPushButton *payButton;
-    QPushButton *cancelButton;
     QLocale locale;
     double totalOrder;
     QTabWidget *tabWidget;
@@ -52,8 +47,6 @@ private:
     QLabel *cashTotalText;
     QLabel *cashReceivedText;
     QLabel *cashChangeText;
-    QGridLayout *cashGrid;
-    QPushButton *bayarButton;
     QPushButton *clearButton;
     QPushButton *exactButton;
     double cashGiven;

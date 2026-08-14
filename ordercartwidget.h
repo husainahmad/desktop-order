@@ -17,7 +17,8 @@ class OrderCartWidget : public QWidget
 
 public:
     explicit OrderCartWidget(OrderItem orderItem, OrderForm *orderForm, QWidget *parent = nullptr);
-    void orderCartSkuWidget(OrderItem &orderItem, QVBoxLayout *&skuLayout);
+    void orderCartSkuWidget(const OrderItem &orderItem, QVBoxLayout *&skuLayout);
+    void updateItem(const OrderItem &orderItem);
     double getTotal();
     ~OrderCartWidget();
 
@@ -30,6 +31,7 @@ private:
     Ui::OrderCartWidget *ui;
     OrderForm *orderForm;
     double subTotal;
+    QVBoxLayout *m_skuLayout = nullptr;
     QLocale locale;
     Setting settingConfig;
 };

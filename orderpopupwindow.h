@@ -2,14 +2,11 @@
 #define ORDERPOPUPWINDOW_H
 
 #include <QDialog>
-#include <QTextBrowser>
 #include <QJsonObject>
 #include <QLocale>
 #include <QTabWidget>
-#include <QNetworkAccessManager>
 #include "setting.h"
 
-class QTextBrowser;
 class QPushButton;
 
 class OrderPopupWindow : public QDialog {
@@ -26,14 +23,12 @@ private slots:
     void payOrder();
     void voidOrder();
 private:
-    QTextBrowser *htmlViewer;
     QPushButton *printButton;
     QPushButton *printKitchenButton;
     QPushButton *closeButton;
     QPushButton *payButton;
     QPushButton *voidButton;
     QLocale locale;
-    QNetworkAccessManager *networkManager;
     QJsonObject orderDetails;
     QTabWidget *tabWidget;
     Setting configSetting;

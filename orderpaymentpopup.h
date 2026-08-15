@@ -58,7 +58,6 @@ private:
     QTableWidgetItem *totalSummaryItem;
 
     QLineEdit *customerNameEdit;
-    QLineEdit *subTotalEdit;
     QLineEdit *discountEdit;
     QTextEdit *remarkEdit;
 };

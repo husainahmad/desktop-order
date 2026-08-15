@@ -157,21 +157,12 @@ OrderPaymentPopup::OrderPaymentPopup(const QJsonObject &order, QTabWidget *tabWi
     customerNameEdit->setFixedHeight(ScreenUtils::px(34));
     detailLayout->addWidget(customerNameEdit, 0, 1);
 
-    detailLayout->addWidget(new QLabel("Sub Total"), 1, 0);
-    subTotalEdit = new QLineEdit(detailPanel);
-    subTotalEdit->setPlaceholderText("Sub Total");
-    subTotalEdit->setAlignment(Qt::AlignRight);
-    subTotalEdit->setFixedHeight(ScreenUtils::px(34));
-    subTotalEdit->setReadOnly(true);
-    subTotalEdit->setText(locale.toString(subTotal, 'f', 0));
-    detailLayout->addWidget(subTotalEdit, 1, 1);
-
-    detailLayout->addWidget(new QLabel("Discount"), 2, 0);
+    detailLayout->addWidget(new QLabel("Discount"), 1, 0);
     discountEdit = new QLineEdit(detailPanel);
     discountEdit->setPlaceholderText("Discount");
     discountEdit->setAlignment(Qt::AlignRight);
     discountEdit->setFixedHeight(ScreenUtils::px(34));
-    detailLayout->addWidget(discountEdit, 2, 1);
+    detailLayout->addWidget(discountEdit, 1, 1);
 
     connect(discountEdit, &QLineEdit::textChanged, this, [this]() {
         double discount = discountEdit->text().toDouble();
@@ -187,11 +178,11 @@ OrderPaymentPopup::OrderPaymentPopup(const QJsonObject &order, QTabWidget *tabWi
         updateCashDisplay();
     });
 
-    detailLayout->addWidget(new QLabel("Additional Notes"), 3, 0);
+    detailLayout->addWidget(new QLabel("Additional Notes"), 2, 0);
     remarkEdit = new QTextEdit(detailPanel);
     remarkEdit->setPlaceholderText("Additional notes...");
     remarkEdit->setFixedHeight(ScreenUtils::px(56));
-    detailLayout->addWidget(remarkEdit, 3, 1);
+    detailLayout->addWidget(remarkEdit, 2, 1);
     detailPanel->setLayout(detailLayout);
 
     mainLayout->addWidget(detailPanel);

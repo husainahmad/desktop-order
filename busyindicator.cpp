@@ -7,6 +7,8 @@
 #include <QPaintEvent>
 #include <QEvent>
 #include <QScreen>
+#include <QShortcut>
+#include <QKeySequence>
 
 QPointer<BusyIndicator> BusyIndicator::s_instance;
 int BusyIndicator::s_refCount = 0;
@@ -15,6 +17,7 @@ BusyIndicator::BusyIndicator(QWidget *parent)
     : QWidget(parent)
 {
     setAttribute(Qt::WA_TranslucentBackground);
+    setAttribute(Qt::WA_TransparentForMouseEvents);
     setObjectName("busyOverlay");
 
     QVBoxLayout *layout = new QVBoxLayout(this);
@@ -41,6 +44,9 @@ BusyIndicator::BusyIndicator(QWidget *parent)
     m_card->setLayout(cardLayout);
     layout->addWidget(m_card);
     setLayout(layout);
+
+    QShortcut *escShortcut = new QShortcut(QKeySequence(Qt::Key_Escape), this);
+    connect(escShortcut, &QShortcut::activated, this, &BusyIndicator::hide);
 
     connect(&m_timer, &QTimer::timeout, this, &BusyIndicator::rotate);
 }

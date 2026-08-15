@@ -42,7 +42,7 @@ bool OrderPrint::sendRaw(const QString &printerName, const QByteArray &data) {
     }
 
 #ifdef Q_OS_WIN
-    OrderPrint dummy(QJsonObject());
+    OrderPrint dummy{QJsonObject()};
     return dummy.sendRawDataToPrinter(printerName, data);
 #else
     QProcess process;

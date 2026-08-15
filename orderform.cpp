@@ -113,44 +113,26 @@ OrderForm::OrderForm(QTabWidget *tabWidget, QWidget *parent)
     summaryGridLayout->setContentsMargins(12, 10, 12, 10);
     summaryGridLayout->setSpacing(8);
 
-    summaryGridLayout->addWidget(new QLabel("Customer Name"), 0, 0);
-    customerNameText = new QLineEdit();
-    customerNameText->setPlaceholderText("Customer Name");
-    customerNameText->setFixedHeight(ScreenUtils::px(34));
-
-    connect(customerNameText, &QLineEdit::textChanged, this, &OrderForm::updateCurrentTabName);
-
-    summaryGridLayout->addWidget(customerNameText, 0, 1);
-
-    summaryGridLayout->addWidget(new QLabel("Sub Total"), 1, 0);
-    subTotalText = new QLineEdit();
-    subTotalText->setPlaceholderText("Sub Total");
-    subTotalText->setAlignment(Qt::AlignRight);
-    subTotalText->setFixedHeight(ScreenUtils::px(34));
-    summaryGridLayout->addWidget(subTotalText, 1, 1);
-
-    summaryGridLayout->addWidget(new QLabel("Discount"), 2, 0);
-    discountText = new QLineEdit();
-    discountText->setPlaceholderText("Discount");
-    discountText->setAlignment(Qt::AlignRight);
-    discountText->setFixedHeight(ScreenUtils::px(34));
-    summaryGridLayout->addWidget(discountText, 2, 1);
-
-    summaryGridLayout->addWidget(new QLabel("Total"), 3, 0);
+    summaryGridLayout->addWidget(new QLabel("Total"), 0, 0);
     totalText = new QLineEdit();
     totalText->setPlaceholderText("Total");
     totalText->setAlignment(Qt::AlignRight);
     totalText->setFixedHeight(ScreenUtils::px(34));
     totalText->setObjectName("totalDisplay");
-    summaryGridLayout->addWidget(totalText, 3, 1);
+    summaryGridLayout->addWidget(totalText, 0, 1);
     summaryPanel->setLayout(summaryGridLayout);
 
     rightLayout->addWidget(summaryPanel);
 
-    remarkText = new QTextEdit();
-    remarkText->setPlaceholderText("Additional notes...");
-    remarkText->setFixedHeight(ScreenUtils::px(72));
-    rightLayout->addWidget(remarkText, 1);
+    customerNameText = new QLineEdit(this);
+    customerNameText->setVisible(false);
+    connect(customerNameText, &QLineEdit::textChanged, this, &OrderForm::updateCurrentTabName);
+
+    discountText = new QLineEdit(this);
+    discountText->setVisible(false);
+
+    remarkText = new QTextEdit(this);
+    remarkText->setVisible(false);
 
     QHBoxLayout *buttonLayout = new QHBoxLayout();
     QPushButton *confirmButton = new QPushButton("Confirm", this);
@@ -186,7 +168,6 @@ OrderForm::OrderForm(QTabWidget *tabWidget, QWidget *parent)
     fetchDataFromAPI();
 
     connect(confirmButton, &QPushButton::clicked, this, &OrderForm::onConfirmButtonClicked);
-    connect(discountText, &QLineEdit::textChanged, this, &OrderForm::populateOrderOnRightPanel);
     connect(printButton, &QPushButton::clicked, this, &OrderForm::printReceipt);
 }
 
@@ -312,7 +293,7 @@ void OrderForm::updateProductLeftTopPanel(const QJsonArray &dataArray) {
     products.clear();
 
     int row = 0, col = 0;
-    int maxColumns = 4;
+    int maxColumns = 3;
 
     for (const QJsonValue &value : dataArray) {
         QJsonObject item = value.toObject();
@@ -425,6 +406,8 @@ QWidget* OrderForm::createProductGroupWidget(const Product &product) {
 
 void OrderForm::onConfirmButtonClicked() {
     QJsonArray orderItemsArray;
+    double subTotal = 0;
+
     for (const OrderItem &orderItem : order.orderItems) {
         QJsonObject orderItemObj;
         orderItemObj["productId"] = orderItem.productId;
@@ -437,6 +420,9 @@ void OrderForm::onConfirmButtonClicked() {
             skuObj["skuId"] = sku.skuId;
             skuObj["skuName"] = sku.skuName;
             skuObj["quantity"] = sku.quantity;
+            skuObj["price"] = sku.price;
+            skuObj["amount"] = sku.subTotal;
+            subTotal += sku.subTotal;
             skusArray.append(skuObj);
         }
 
@@ -445,25 +431,11 @@ void OrderForm::onConfirmButtonClicked() {
     }
 
     QJsonObject orderData;
-
-    orderData["storeServiceTypesId"] = 1;
-    orderData["customerName"] = customerNameText->text();
-    orderData["customerId"] = -1;
-    orderData["remark"] = remarkText->toPlainText();
+    orderData["subTotal"] = subTotal;
     orderData["orderDetails"] = orderItemsArray;
-    orderData["discount"] = discountText->text();
 
-    QByteArray jsonData = QJsonDocument(orderData).toJson();
-
-    const QUrl url(settingConfig.getApiEndpoint("order","confirm"));
-    ApiClient::instance().post(url, jsonData, [this](const QJsonObject &response) {
-        QJsonObject data = response["data"].toObject();
-        OrderPaymentPopup popup(data, this->tabWidget);
-        popup.exec();
-    }, [this](const QString &message, int) {
-        qDebug() << "Order placement failed:" << message;
-        QMessageBox::warning(this, "Order Failed", "Failed to place order. Please try again.");
-    });
+    OrderPaymentPopup popup(orderData, this->tabWidget);
+    popup.exec();
 }
 
 void OrderForm::populateOrderOnRightPanel() {
@@ -499,8 +471,6 @@ void OrderForm::populateOrderOnRightPanel() {
         }
         subTotal += cartWidget->getTotal();
     }
-
-    subTotalText->setText(locale.toString(subTotal, 'f', 0));
 
     double discount = discountText->text().toDouble();
     totalText->setText(locale.toString(subTotal - discount, 'f', 0));

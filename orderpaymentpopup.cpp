@@ -21,6 +21,8 @@
 #include <QTableWidgetItem>
 #include <QHeaderView>
 #include <QAbstractItemView>
+#include <QLineEdit>
+#include <QTextEdit>
 #include <orderprint.h>
 #include "tokenmanager.h"
 #include "screenutils.h"
@@ -42,8 +44,13 @@ OrderPaymentPopup::OrderPaymentPopup(const QJsonObject &order, QTabWidget *tabWi
     mainLayout->setContentsMargins(10, 10, 10, 10);
 
     double subTotal = order["subTotal"].toDouble();
+    this->subTotal = subTotal;
     double discountTotal = order["discountTotal"].toDouble();
     double grandTotal = order["grandTotal"].toDouble();
+    if (grandTotal <= 0 && discountTotal <= 0) {
+        discountTotal = 0;
+        grandTotal = subTotal;
+    }
     totalOrder = grandTotal;
 
     QJsonArray orderDetailsArray = order.value("orderDetails").toArray();
@@ -111,7 +118,7 @@ OrderPaymentPopup::OrderPaymentPopup(const QJsonObject &order, QTabWidget *tabWi
     boldFont.setBold(true);
 
     int summaryRow = itemRows;
-    auto addSummaryRow = [&](const QString &label, const QString &value, const QFont &font) {
+    auto addSummaryRow = [&](const QString &label, const QString &value, const QFont &font) -> QTableWidgetItem* {
         itemsTable->setSpan(summaryRow, 0, 1, 4);
         QTableWidgetItem *labelItem = new QTableWidgetItem(label);
         labelItem->setFont(font);
@@ -122,11 +129,12 @@ OrderPaymentPopup::OrderPaymentPopup(const QJsonObject &order, QTabWidget *tabWi
         itemsTable->setItem(summaryRow, 0, labelItem);
         itemsTable->setItem(summaryRow, 4, valueItem);
         summaryRow++;
+        return valueItem;
     };
 
     addSummaryRow("Sub Total", "Rp " + locale.toString(subTotal, 'f', 0), boldFont);
     addSummaryRow("Discount", "Rp " + locale.toString(discountTotal, 'f', 0), boldFont);
-    addSummaryRow("Total", "Rp " + locale.toString(grandTotal, 'f', 0), boldFont);
+    totalSummaryItem = addSummaryRow("Total", "Rp " + locale.toString(grandTotal, 'f', 0), boldFont);
 
     QScrollArea *scrollArea = new QScrollArea(this);
     scrollArea->setWidget(itemsTable);
@@ -135,6 +143,58 @@ OrderPaymentPopup::OrderPaymentPopup(const QJsonObject &order, QTabWidget *tabWi
     scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     scrollArea->setFixedHeight(qMin(ScreenUtils::px(300), ScreenUtils::availableHeight() / 3));
     mainLayout->addWidget(scrollArea);
+
+    // ======================= Customer / discount / notes =======================
+    QWidget *detailPanel = new QWidget(this);
+    detailPanel->setObjectName("cardPanel");
+    QGridLayout *detailLayout = new QGridLayout(detailPanel);
+    detailLayout->setContentsMargins(12, 10, 12, 10);
+    detailLayout->setSpacing(8);
+
+    detailLayout->addWidget(new QLabel("Customer Name"), 0, 0);
+    customerNameEdit = new QLineEdit(detailPanel);
+    customerNameEdit->setPlaceholderText("Customer Name");
+    customerNameEdit->setFixedHeight(ScreenUtils::px(34));
+    detailLayout->addWidget(customerNameEdit, 0, 1);
+
+    detailLayout->addWidget(new QLabel("Sub Total"), 1, 0);
+    subTotalEdit = new QLineEdit(detailPanel);
+    subTotalEdit->setPlaceholderText("Sub Total");
+    subTotalEdit->setAlignment(Qt::AlignRight);
+    subTotalEdit->setFixedHeight(ScreenUtils::px(34));
+    subTotalEdit->setReadOnly(true);
+    subTotalEdit->setText(locale.toString(subTotal, 'f', 0));
+    detailLayout->addWidget(subTotalEdit, 1, 1);
+
+    detailLayout->addWidget(new QLabel("Discount"), 2, 0);
+    discountEdit = new QLineEdit(detailPanel);
+    discountEdit->setPlaceholderText("Discount");
+    discountEdit->setAlignment(Qt::AlignRight);
+    discountEdit->setFixedHeight(ScreenUtils::px(34));
+    detailLayout->addWidget(discountEdit, 2, 1);
+
+    connect(discountEdit, &QLineEdit::textChanged, this, [this]() {
+        double discount = discountEdit->text().toDouble();
+        double total = this->subTotal - discount;
+        if (total < 0) total = 0;
+        totalOrder = total;
+        if (totalSummaryItem) {
+            totalSummaryItem->setText("Rp " + locale.toString(total, 'f', 0));
+        }
+        if (cashTotalText) {
+            cashTotalText->setText("Rp " + locale.toString(total, 'f', 0));
+        }
+        updateCashDisplay();
+    });
+
+    detailLayout->addWidget(new QLabel("Additional Notes"), 3, 0);
+    remarkEdit = new QTextEdit(detailPanel);
+    remarkEdit->setPlaceholderText("Additional notes...");
+    remarkEdit->setFixedHeight(ScreenUtils::px(56));
+    detailLayout->addWidget(remarkEdit, 3, 1);
+    detailPanel->setLayout(detailLayout);
+
+    mainLayout->addWidget(detailPanel);
 
     // ======================= Payment method selection =======================
     paymentGroup = new QButtonGroup(this);
@@ -297,9 +357,7 @@ void OrderPaymentPopup::processPayment() {
     } else if (paymentGroup->id(paymentGroup->checkedButton()) == 3) {
         paymentId = 3;  // Card Payment
     } else if (paymentGroup->id(paymentGroup->checkedButton()) == 1) {
-        double grandTotal = orderDetails["grandTotal"].toDouble();
-
-        if (cashGiven < grandTotal) {
+        if (cashGiven < totalOrder) {
             QMessageBox::warning(this, "Error", "Insufficient cash entered!");
             return;
         }
@@ -308,38 +366,64 @@ void OrderPaymentPopup::processPayment() {
         return;
     }
 
-    QJsonObject orderData;
-    orderData["orderId"] = orderDetails["id"].toInt();
-    orderData["paymentId"] = paymentId;
+    QJsonObject confirmData;
+    confirmData["storeServiceTypesId"] = 1;
+    confirmData["customerName"] = customerNameEdit->text();
+    confirmData["customerId"] = -1;
+    confirmData["remark"] = remarkEdit->toPlainText();
+    confirmData["orderDetails"] = orderDetails["orderDetails"].toArray();
+    confirmData["discount"] = discountEdit->text();
 
-    QUrl url(configSetting.getApiEndpoint("order", "payment"));
-    if (!url.isValid()) {
+    const QUrl confirmUrl(configSetting.getApiEndpoint("order", "confirm"));
+    if (!confirmUrl.isValid()) {
         QMessageBox::warning(this, "Error", "Invalid API URL. Please check config.");
         return;
     }
 
-    QByteArray jsonData = QJsonDocument(orderData).toJson();
-
-    ApiClient::instance().put(url, jsonData, [this](const QJsonObject &response) {
-        QJsonObject data = response["data"].toObject();
-
-        OrderPrint orderPrinter(data);
-        orderPrinter.sendToReceiptPrinter();
-
-        if (this->tabWidget) {
-            int index = this->tabWidget->currentIndex();
-            if (index > 0) {
-                QWidget *page = this->tabWidget->widget(index);
-                this->tabWidget->removeTab(index);
-                if (page) {
-                    page->deleteLater();
-                }
+    ApiClient::instance().post(confirmUrl, QJsonDocument(confirmData).toJson(),
+        [this, paymentId](const QJsonObject &response) {
+            QJsonObject data = response["data"].toObject();
+            const int orderId = data["id"].toInt();
+            if (orderId <= 0) {
+                QMessageBox::warning(this, "Error", "Order placement failed. No order id returned.");
+                return;
             }
-        }
 
-        this->accept();
-    }, [this](const QString &message, int) {
-        qDebug() << "Order payment failed:" << message;
-        QMessageBox::warning(this, "Error", "Failed to process payment. Please try again.");
-    });
+            QJsonObject payData;
+            payData["orderId"] = orderId;
+            payData["paymentId"] = paymentId;
+
+            QUrl payUrl(configSetting.getApiEndpoint("order", "payment"));
+            if (!payUrl.isValid()) {
+                QMessageBox::warning(this, "Error", "Invalid API URL. Please check config.");
+                return;
+            }
+
+            ApiClient::instance().put(payUrl, QJsonDocument(payData).toJson(),
+                [this](const QJsonObject &payResponse) {
+                    QJsonObject payObj = payResponse["data"].toObject();
+
+                    OrderPrint orderPrinter(payObj);
+                    orderPrinter.sendToReceiptPrinter();
+
+                    if (this->tabWidget) {
+                        int index = this->tabWidget->currentIndex();
+                        if (index > 0) {
+                            QWidget *page = this->tabWidget->widget(index);
+                            this->tabWidget->removeTab(index);
+                            if (page) {
+                                page->deleteLater();
+                            }
+                        }
+                    }
+
+                    this->accept();
+                }, [this](const QString &message, int) {
+                    qDebug() << "Order payment failed:" << message;
+                    QMessageBox::warning(this, "Error", "Failed to process payment. Please try again.");
+                });
+        }, [this](const QString &message, int) {
+            qDebug() << "Order placement failed:" << message;
+            QMessageBox::warning(this, "Error", "Failed to place order. Please try again.");
+        });
 }

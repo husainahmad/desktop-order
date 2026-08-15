@@ -67,7 +67,6 @@ private:
     QTextEdit *remarkText;
     QLineEdit *customerNameText;
     QLineEdit *discountText;
-    QLineEdit *subTotalText;
     QLineEdit *totalText;
     void populateOrderOnRightPanel();
     QLocale locale;

@@ -12,7 +12,10 @@
 
 class QPushButton;
 class QTableWidget;
+class QTableWidgetItem;
 class QLocale;
+class QLineEdit;
+class QTextEdit;
 
 class OrderPaymentPopup : public QDialog {
     Q_OBJECT
@@ -51,6 +54,13 @@ private:
     QPushButton *exactButton;
     double cashGiven;
     double cashChange;
+    double subTotal;
+    QTableWidgetItem *totalSummaryItem;
+
+    QLineEdit *customerNameEdit;
+    QLineEdit *subTotalEdit;
+    QLineEdit *discountEdit;
+    QTextEdit *remarkEdit;
 };
 
 #endif // ORDERPAYMENTPOPUP_H

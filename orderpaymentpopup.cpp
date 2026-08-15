@@ -248,26 +248,12 @@ OrderPaymentPopup::OrderPaymentPopup(const QJsonObject &order, QTabWidget *tabWi
         btn->setProperty("denomValue", denomValues[i]);
         btn->setObjectName("denomButton");
         connect(btn, &QPushButton::clicked, this, &OrderPaymentPopup::onCashButtonClicked);
-        int row = i / 3;
-        int col = i % 3;
+        int row = i / 5;
+        int col = i % 5;
         cashGrid->addWidget(btn, row, col);
     }
     totalColumn->addLayout(cashGrid);
 
-    QHBoxLayout *cashControlLayout = new QHBoxLayout();
-    cashControlLayout->setSpacing(8);
-
-    clearButton = new QPushButton("CLEAR", cashPanel);
-    clearButton->setObjectName("ghostButton");
-    connect(clearButton, &QPushButton::clicked, this, &OrderPaymentPopup::clearCashAmount);
-    cashControlLayout->addWidget(clearButton);
-
-    exactButton = new QPushButton("EXACT", cashPanel);
-    exactButton->setObjectName("successButton");
-    connect(exactButton, &QPushButton::clicked, this, &OrderPaymentPopup::setExactCash);
-    cashControlLayout->addWidget(exactButton);
-
-    totalColumn->addLayout(cashControlLayout);
     cashTopLayout->addLayout(totalColumn);
 
     QVBoxLayout *receivedColumn = new QVBoxLayout();
@@ -287,6 +273,22 @@ OrderPaymentPopup::OrderPaymentPopup(const QJsonObject &order, QTabWidget *tabWi
     cashChangeText = new QLabel("Rp 0", cashPanel);
     cashChangeText->setStyleSheet(ScreenUtils::qss("font-size: 20px; font-weight: bold; color: #4CAF50;"));
     receivedColumn->addWidget(cashChangeText);
+
+    QHBoxLayout *cashControlLayout = new QHBoxLayout();
+    cashControlLayout->setSpacing(8);
+    cashControlLayout->setAlignment(Qt::AlignRight);
+
+    clearButton = new QPushButton("CLEAR", cashPanel);
+    clearButton->setObjectName("ghostButton");
+    connect(clearButton, &QPushButton::clicked, this, &OrderPaymentPopup::clearCashAmount);
+    cashControlLayout->addWidget(clearButton);
+
+    exactButton = new QPushButton("EXACT", cashPanel);
+    exactButton->setObjectName("successButton");
+    connect(exactButton, &QPushButton::clicked, this, &OrderPaymentPopup::setExactCash);
+    cashControlLayout->addWidget(exactButton);
+
+    receivedColumn->addLayout(cashControlLayout);
 
     cashTopLayout->addLayout(receivedColumn);
     cashLayout->addLayout(cashTopLayout);

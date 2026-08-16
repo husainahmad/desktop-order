@@ -24,6 +24,7 @@
 #include "ordertabbutton.h"
 
 class OrderCartWidget;
+class QScrollArea;
 
 namespace Ui {
 class OrderForm;
@@ -83,6 +84,8 @@ private:
     QRadioButton *dineInBtn;
     QRadioButton *takeawayBtn;
     void populateOrderOnRightPanel();
+    void scrollCartToBottom();
+    QScrollArea *cartScrollArea = nullptr;
     void layoutCategoryButtons();
     void setActiveCategory(QPushButton *button, const QString &id);
     QLocale locale;

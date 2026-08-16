@@ -33,7 +33,7 @@ OrderPaymentPopup::OrderPaymentPopup(const QJsonObject &order, QTabWidget *tabWi
     : QDialog(parent), orderDetails(order), tabWidget(tabWidget),
       cashGiven(0), cashChange(0) {
     setWindowTitle("Select Payment Method");
-    setFixedSize(ScreenUtils::fittedSize(750, 700, 0.95, 0.92));
+    setFixedSize(ScreenUtils::fittedSize(760, 700, 0.95, 0.98));
     setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::CustomizeWindowHint);
 
     locale = QLocale::English;
@@ -57,6 +57,41 @@ OrderPaymentPopup::OrderPaymentPopup(const QJsonObject &order, QTabWidget *tabWi
     remark = order["remark"].toString();
     serviceTypeId = order["storeServiceTypesId"].toInt();
     if (serviceTypeId <= 0) serviceTypeId = 1;
+
+    // ======================= Order info panel =======================
+    QWidget *infoPanel = new QWidget(this);
+    infoPanel->setObjectName("cardPanel");
+    QGridLayout *infoLayout = new QGridLayout(infoPanel);
+    infoLayout->setContentsMargins(12, 10, 12, 10);
+    infoLayout->setSpacing(6);
+
+    auto infoField = [&infoPanel](const QString &labelText, const QString &valueText) -> QWidget* {
+        QWidget *field = new QWidget(infoPanel);
+        QVBoxLayout *fieldLayout = new QVBoxLayout(field);
+        fieldLayout->setContentsMargins(0, 0, 0, 0);
+        fieldLayout->setSpacing(2);
+
+        QLabel *label = new QLabel(labelText, field);
+        label->setStyleSheet(ScreenUtils::qss("color: #64748b; font-size: 11px;"));
+
+        QLabel *value = new QLabel(valueText, field);
+        value->setStyleSheet(ScreenUtils::qss("color: #0f172a; font-size: 14px; font-weight: 600;"));
+        value->setTextInteractionFlags(Qt::TextSelectableByMouse);
+
+        fieldLayout->addWidget(label);
+        fieldLayout->addWidget(value);
+        field->setLayout(fieldLayout);
+        return field;
+    };
+
+    const QString serviceTypeName = (serviceTypeId == 3) ? "Take Away" : "Dine In";
+    infoLayout->addWidget(infoField("Customer", customerName), 0, 0);
+    infoLayout->addWidget(infoField("Order Type", serviceTypeName), 0, 1);
+    infoLayout->addWidget(infoField("Discount", "Rp " + locale.toString(discountTotal, 'f', 0)), 0, 2);
+    infoLayout->addWidget(infoField("Note", remark), 1, 0, 1, 3);
+
+    infoPanel->setLayout(infoLayout);
+    mainLayout->addWidget(infoPanel);
 
     QJsonArray orderDetailsArray = order.value("orderDetails").toArray();
 
@@ -194,15 +229,15 @@ OrderPaymentPopup::OrderPaymentPopup(const QJsonObject &order, QTabWidget *tabWi
 
     QGridLayout *cashGrid = new QGridLayout();
     cashGrid->setSpacing(5);
-    QStringList denominations = {"1.000", "2.000", "5.000", "10.000", "20.000", "50.000", "100.000", "200.000", "500.000"};
-    QList<int> denomValues = {1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000, 500000};
+    QStringList denominations = {"1.000", "2.000", "5.000", "10.000", "20.000", "50.000", "100.000", "200.000"};
+    QList<int> denomValues = {1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000};
     for (int i = 0; i < denominations.size(); ++i) {
         QPushButton *btn = new QPushButton(denominations[i], cashPanel);
         btn->setProperty("denomValue", denomValues[i]);
         btn->setObjectName("denomButton");
         connect(btn, &QPushButton::clicked, this, &OrderPaymentPopup::onCashButtonClicked);
-        int row = i / 5;
-        int col = i % 5;
+        int row = i / 4;
+        int col = i % 4;
         cashGrid->addWidget(btn, row, col);
     }
     totalColumn->addLayout(cashGrid);

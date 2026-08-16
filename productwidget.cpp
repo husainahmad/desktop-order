@@ -53,7 +53,7 @@ ProductWidget::ProductWidget(Product product, QWidget *parent)
     QLabel *nameLabel = new QLabel(product.name, this);
     nameLabel->setAlignment(Qt::AlignCenter);
     nameLabel->setWordWrap(true);
-    nameLabel->setMinimumHeight(ScreenUtils::px(36));
+    nameLabel->setMinimumHeight(ScreenUtils::px(25));
     nameLabel->setStyleSheet(ScreenUtils::qss(
         "font-size: 14px; font-weight: 600; color: #0f172a; background: transparent;"));
 
@@ -72,7 +72,7 @@ ProductWidget::ProductWidget(Product product, QWidget *parent)
     priceLabel->setAlignment(Qt::AlignCenter);
     priceLabel->setStyleSheet(ScreenUtils::qss(
         "color: #16a34a; font-size: 13px; font-weight: 700; background: transparent;"
-        "border: 1px solid #bbf7d0; border-radius: 10px; padding: 3px 10px;"));
+        "border: 1px solid #bbf7d0; border-radius: 10px; padding: 2px 5px;"));
     if (product.skus.isEmpty()) {
         priceLabel->hide();
     }
@@ -99,7 +99,7 @@ ProductWidget::ProductWidget(Product product, QWidget *parent)
         "   border: 1px solid #e2e8f0;"
         "   border-radius: 16px;"
         "   background-color: #ffffff;"
-        "   padding: 6px;"
+        "   padding: 4px;"
         "}"
         "QWidget#productCard:hover {"
         "   border: 2px solid #2563eb;"

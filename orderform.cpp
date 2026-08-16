@@ -7,8 +7,11 @@
 #include <QTextEdit>
 #include <QTableWidgetItem>
 #include <QScrollArea>
+#include <QScrollBar>
+#include <QTimer>
 #include <QPushButton>
 #include <QLineEdit>
+#include <QDoubleValidator>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
@@ -113,6 +116,7 @@ OrderForm::OrderForm(QTabWidget *tabWidget, QWidget *parent)
     rightScrollArea->setWidgetResizable(true);
     rightScrollArea->setWidget(cartPanel);
     TouchUtils::enableTouchScrolling(rightScrollArea);
+    cartScrollArea = rightScrollArea;
 
     rightLayout->addWidget(rightScrollArea, 9);
 
@@ -150,6 +154,9 @@ OrderForm::OrderForm(QTabWidget *tabWidget, QWidget *parent)
     discountText->setPlaceholderText("Discount");
     discountText->setAlignment(Qt::AlignRight);
     discountText->setFixedHeight(ScreenUtils::px(34));
+    QDoubleValidator *discountValidator = new QDoubleValidator(0, 99999999, 2, this);
+    discountValidator->setNotation(QDoubleValidator::StandardNotation);
+    discountText->setValidator(discountValidator);
     summaryGridLayout->addWidget(discountText, 2, 1);
 
     summaryGridLayout->addWidget(new QLabel("Total"), 3, 0);
@@ -192,8 +199,8 @@ OrderForm::OrderForm(QTabWidget *tabWidget, QWidget *parent)
     mainSplitter->addWidget(leftSplitter);
     mainSplitter->addWidget(rightPanel);
 
-    mainSplitter->setStretchFactor(0, 6);
-    mainSplitter->setStretchFactor(1, 4);
+    mainSplitter->setStretchFactor(0, 72);
+    mainSplitter->setStretchFactor(1, 28);
 
     QVBoxLayout *layout = new QVBoxLayout();
     layout->addWidget(mainSplitter);
@@ -674,10 +681,16 @@ void OrderForm::updateCurrentTabName(const QString &newName) {
 
 void OrderForm::updateOrderData(const Product &product, const Sku &sku, const bool &add) {
     bool found = false;
+    bool newItemAdded = false;
 
     for (int i = 0; i < order.orderItems.size(); ++i) {
         if (order.orderItems[i].productId == product.id) {
+            const int skuCountBefore = order.orderItems[i].orderItemSkus.size();
             checkSku(sku, add, order.orderItems[i]);
+
+            if (order.orderItems[i].orderItemSkus.size() > skuCountBefore) {
+                newItemAdded = true;
+            }
 
             if (order.orderItems[i].orderItemSkus.isEmpty()) {
                 order.orderItems.removeAt(i);
@@ -693,9 +706,27 @@ void OrderForm::updateOrderData(const Product &product, const Sku &sku, const bo
             OrderItemSku(sku.id, sku.name, 1, sku.price, sku.price)};
         OrderItem orderItem(product.id, product.name, product.categoryId, orderItemSkus);
         order.orderItems.append(orderItem);
+        newItemAdded = true;
     }
 
     populateOrderOnRightPanel();
+
+    if (newItemAdded) {
+        scrollCartToBottom();
+    }
+}
+
+void OrderForm::scrollCartToBottom() {
+    if (!cartScrollArea) {
+        return;
+    }
+
+    QTimer::singleShot(0, this, [this]() {
+        if (cartScrollArea && cartScrollArea->verticalScrollBar()) {
+            cartScrollArea->verticalScrollBar()->setValue(
+                cartScrollArea->verticalScrollBar()->maximum());
+        }
+    });
 }
 
 

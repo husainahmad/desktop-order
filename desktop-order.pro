@@ -29,6 +29,7 @@ SOURCES += \
     ordersummary.cpp \
     ordertablewidget.cpp \
     product.cpp \
+    productdetailpopup.cpp \
     productimage.cpp \
     productwidget.cpp \
     salesreportscreen.cpp \
@@ -62,6 +63,7 @@ HEADERS += \
     ordersummary.h \
     ordertablewidget.h \
     product.h \
+    productdetailpopup.h \
     productimage.h \
     productwidget.h \
     salesreportscreen.h \

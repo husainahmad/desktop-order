@@ -34,6 +34,7 @@ public:
     void updateOrderData(const Product &product, const Sku &sku, const bool &add);
     void setTabButtonWidget(OrderTabButton *tabButton, const QString &orderTitle);
     void updateTabSubtitle();
+    int getSkuQuantity(int productId, int skuId) const;
 
 public slots:
     void updateQuantity(const Product &product, const Sku &sku, bool add);

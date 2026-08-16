@@ -21,7 +21,7 @@
 #include "orderitemsku.h"
 #include "productimage.h"
 #include "productwidget.h"
-#include "skuwidget.h"
+#include "productdetailpopup.h"
 #include "tokenmanager.h"
 #include <QLocale>
 #include <QMessageBox>
@@ -293,7 +293,7 @@ void OrderForm::updateProductLeftTopPanel(const QJsonArray &dataArray) {
     products.clear();
 
     int row = 0, col = 0;
-    int maxColumns = 3;
+    int maxColumns = 4;
 
     for (const QJsonValue &value : dataArray) {
         QJsonObject item = value.toObject();
@@ -384,24 +384,28 @@ QList<Sku> OrderForm::getSkuFromItem(const QJsonObject &object) {
 }
 
 QWidget* OrderForm::createProductGroupWidget(const Product &product) {
-    QWidget *productGroupWidget = new QWidget();
-    QHBoxLayout *productGroupLayout = new QHBoxLayout(productGroupWidget);
+    ProductWidget *productWidget = new ProductWidget(product, this);
+    productWidget->setObjectName("productCard");
 
-    productGroupLayout->setContentsMargins(0, 0, 0, 0);
-    productGroupLayout->setSpacing(0);
+    connect(productWidget, &ProductWidget::clicked, this, [this, product]() {
+        ProductDetailPopup popup(product, this, this);
+        popup.exec();
+    });
 
-    SkuWidget *skuWidget = new SkuWidget(product, this);
-    skuWidget->setObjectName("skuCard");
+    return productWidget;
+}
 
-    productGroupLayout->addWidget(new ProductWidget(product, productGroupWidget), 3);
-    productGroupLayout->addWidget(skuWidget, 7);
-
-    connect(skuWidget, &SkuWidget::updateQuantity,
-            this, &OrderForm::updateQuantity);
-
-    productGroupWidget->setLayout(productGroupLayout);
-
-    return productGroupWidget;
+int OrderForm::getSkuQuantity(int productId, int skuId) const {
+    for (const OrderItem &orderItem : order.orderItems) {
+        if (orderItem.productId == productId) {
+            for (const OrderItemSku &sku : orderItem.orderItemSkus) {
+                if (sku.skuId == skuId) {
+                    return sku.quantity;
+                }
+            }
+        }
+    }
+    return 0;
 }
 
 void OrderForm::onConfirmButtonClicked() {

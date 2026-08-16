@@ -5,6 +5,7 @@
 #include <QLabel>
 #include <QString>
 #include <QLocale>
+#include <QMouseEvent>
 #include "product.h"
 
 namespace Ui {
@@ -18,6 +19,12 @@ class ProductWidget : public QWidget
 public:
     explicit ProductWidget(Product product, QWidget *parent = nullptr);
     ~ProductWidget();
+
+signals:
+    void clicked();
+
+protected:
+    void mousePressEvent(QMouseEvent *event) override;
 
 private slots:
     void setImageFromBase64(QLabel *label, const QString &base64String);

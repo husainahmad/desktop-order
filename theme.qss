@@ -366,7 +366,7 @@ QLabel#sectionHeaderAccent {
 QWidget#productCard {
     background-color: #ffffff;
     border: 1px solid #e2e8f0;
-    border-radius: 12px;
+    border-radius: 16px;
 }
 QWidget#productCard:hover {
     border: 1px solid #2563eb;

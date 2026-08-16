@@ -14,8 +14,6 @@ class QPushButton;
 class QTableWidget;
 class QTableWidgetItem;
 class QLocale;
-class QLineEdit;
-class QTextEdit;
 
 class OrderPaymentPopup : public QDialog {
     Q_OBJECT
@@ -57,9 +55,9 @@ private:
     double subTotal;
     QTableWidgetItem *totalSummaryItem;
 
-    QLineEdit *customerNameEdit;
-    QLineEdit *discountEdit;
-    QTextEdit *remarkEdit;
+    QString customerName;
+    QString remark;
+    int serviceTypeId;
 };
 
 #endif // ORDERPAYMENTPOPUP_H

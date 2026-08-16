@@ -29,10 +29,10 @@ OrderTableWidget::OrderTableWidget(const QJsonArray &dataArray, QTabWidget *tabW
     QVBoxLayout *mainLayout = new QVBoxLayout(this);
     mainLayout->setSpacing(0);
 
-    QTableWidget *tableWidget = new QTableWidget(1, 8, this);
+    QTableWidget *tableWidget = new QTableWidget(1, 9, this);
 
     // Set header labels
-    tableWidget->setHorizontalHeaderLabels({"Order No", "Date", "Customer", "Payment", "Status", "Sub Total", "Disc", "Total"});
+    tableWidget->setHorizontalHeaderLabels({"Order No", "Date", "Customer", "Type", "Payment", "Status", "Sub Total", "Disc", "Total"});
 
     // Resize mode for proper spacing
     tableWidget->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
@@ -89,6 +89,14 @@ OrderTableWidget::OrderTableWidget(const QJsonArray &dataArray, QTabWidget *tabW
         tableWidget->setItem(i, 1, new QTableWidgetItem(createdAt.toString("yyyy-MM-dd HH:mm")));
         tableWidget->setItem(i, 2, new QTableWidgetItem(customerName));
 
+        QString orderType;
+        switch (orderObj["storeServiceTypesId"].toInt()) {
+            case 1: orderType = "DINE IN"; break;
+            case 3: orderType = "TAKEWAY"; break;
+            default: orderType = ""; break;
+        }
+        tableWidget->setItem(i, 3, new QTableWidgetItem(orderType));
+
         QString paymentMethod;
         switch (paymentId) {
             case 1: paymentMethod = "CASH"; break;
@@ -97,9 +105,9 @@ OrderTableWidget::OrderTableWidget(const QJsonArray &dataArray, QTabWidget *tabW
             default: paymentMethod = ""; break;
         }
 
-        tableWidget->setItem(i, 3, new QTableWidgetItem(paymentMethod));
+        tableWidget->setItem(i, 4, new QTableWidgetItem(paymentMethod));
 
-        tableWidget->setItem(i, 4, new QTableWidgetItem(statusOrder));
+        tableWidget->setItem(i, 5, new QTableWidgetItem(statusOrder));
 
         QTableWidgetItem *subTotalItem = new QTableWidgetItem("Rp." + QLocale(QLocale::English).toString(subTotal, 'f', 0));
         QTableWidgetItem *discountItem = new QTableWidgetItem("Rp." + QLocale(QLocale::English).toString(discountTotal, 'f', 0));
@@ -116,9 +124,9 @@ OrderTableWidget::OrderTableWidget(const QJsonArray &dataArray, QTabWidget *tabW
         totalItem->setFlags(totalItem->flags() & ~Qt::ItemIsEditable);
 
         // Insert into table
-        tableWidget->setItem(i, 5, subTotalItem);
-        tableWidget->setItem(i, 6, discountItem);
-        tableWidget->setItem(i, 7, totalItem);
+        tableWidget->setItem(i, 6, subTotalItem);
+        tableWidget->setItem(i, 7, discountItem);
+        tableWidget->setItem(i, 8, totalItem);
     }
 
     // Add table to layout

@@ -12,6 +12,11 @@
 #include <QLabel>
 #include <QJsonObject>
 #include <QTextEdit>
+#include <QScrollArea>
+#include <QPushButton>
+#include <QRadioButton>
+#include <QButtonGroup>
+#include <QResizeEvent>
 #include "product.h"
 #include "order.h"
 #include <QLocale>
@@ -57,7 +62,12 @@ private:
     Ui::OrderForm *ui;
     QTabWidget *tabWidget;
     QWidget *bottomLeftWidget;
-    QGridLayout *buttonGridLayout;
+    QHBoxLayout *buttonGridLayout;
+    QScrollArea *categoryScrollArea;
+    QList<QPushButton *> categoryButtons;
+    QHash<QPushButton *, QString> categoryButtonIds;
+    QPushButton *activeCategoryButton = nullptr;
+    QString activeCategoryId;
     QList<QWidget*> productWidgets;
     QGridLayout *gridLayout;
     QList<Product> products;
@@ -69,11 +79,19 @@ private:
     QLineEdit *customerNameText;
     QLineEdit *discountText;
     QLineEdit *totalText;
+    QButtonGroup *serviceTypeGroup;
+    QRadioButton *dineInBtn;
+    QRadioButton *takeawayBtn;
     void populateOrderOnRightPanel();
+    void layoutCategoryButtons();
+    void setActiveCategory(QPushButton *button, const QString &id);
     QLocale locale;
     Setting settingConfig;
     QString tabName;
     OrderTabButton *tabButton = nullptr;
+
+protected:
+    void resizeEvent(QResizeEvent *event) override;
 };
 
 #endif // ORDERFORM_H

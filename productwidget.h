@@ -6,6 +6,8 @@
 #include <QString>
 #include <QLocale>
 #include <QMouseEvent>
+#include <QEnterEvent>
+#include <QEvent>
 #include "product.h"
 
 namespace Ui {
@@ -25,12 +27,16 @@ signals:
 
 protected:
     void mousePressEvent(QMouseEvent *event) override;
+    void enterEvent(QEnterEvent *event) override;
+    void leaveEvent(QEvent *event) override;
 
 private slots:
     void setImageFromBase64(QLabel *label, const QString &base64String);
 private:
     Ui::ProductWidget *ui;
     QLocale locale;
+    QLabel *hoverBadge = nullptr;
+    QLabel *m_imageLabel = nullptr;
 };
 
 #endif // PRODUCTWIDGET_H

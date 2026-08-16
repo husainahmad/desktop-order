@@ -20,6 +20,9 @@
 #include <QLabel>
 #include <QPixmap>
 #include <QDateTime>
+#include <QToolBar>
+#include <QAction>
+#include <functional>
 #include <QTableWidget>
 #include <QHeaderView>
 #include <QJsonDocument>
@@ -80,6 +83,33 @@ OrderScreen::OrderScreen(QWidget *parent)
     dateTimeLabel->setObjectName("headerMeta");
     headerLayout->addWidget(dateTimeLabel);
 
+    // ======================= Header toolbar =======================
+    QToolBar *headerToolBar = new QToolBar(headerWidget);
+    headerToolBar->setMovable(false);
+    headerToolBar->setFloatable(false);
+    headerToolBar->setIconSize(QSize(ScreenUtils::px(16), ScreenUtils::px(16)));
+    headerToolBar->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+
+    auto addHeaderAction = [this, headerToolBar](const QString &text, QStyle::StandardPixmap icon, const std::function<void()> &slot) {
+        QAction *action = headerToolBar->addAction(text);
+        action->setIcon(style()->standardIcon(icon));
+        connect(action, &QAction::triggered, this, slot);
+    };
+
+    addHeaderAction("Refresh", QStyle::SP_BrowserReload, [this]() {
+        CacheUtils::clearAppCache();
+        fetchDataFromAPI();
+    });
+    addHeaderAction("Daily Report", QStyle::SP_FileDialogDetailedView, [this]() { onDailyReportClicked(); });
+    addHeaderAction("Sales Report", QStyle::SP_FileDialogContentsView, [this]() { onSalesReportClicked(); });
+    addHeaderAction("Settlement", QStyle::SP_FileDialogInfoView, [this]() { onSettlementClicked(); });
+
+    headerToolBar->addSeparator();
+
+    addHeaderAction("Settings", QStyle::SP_FileDialogListView, [this]() { onSettingsClicked(); });
+
+    headerLayout->addWidget(headerToolBar);
+
     logoutButton = new QPushButton("Logout", headerWidget);
     logoutButton->setObjectName("navButton");
     logoutButton->setFixedHeight(ScreenUtils::px(38));
@@ -109,61 +139,23 @@ OrderScreen::OrderScreen(QWidget *parent)
 
     tabWidget->addTab(firstTab, "Orders");
 
-    // ======================= Action bar =======================
-    QPushButton *addOrderButton = new QPushButton("Add Order", this);
-    QPushButton *settlementButton = new QPushButton("Settlement", this);
-    QPushButton *dailyReportButton = new QPushButton("Daily Report", this);
-    QPushButton *salesReportButton = new QPushButton("Sales Report", this);
-    QPushButton *refreshButton = new QPushButton("Refresh", this);
-    settingsButton = new QPushButton("Settings", this);
-
-    addOrderButton->setObjectName("successButton");
-    settlementButton->setObjectName("primaryButton");
-    dailyReportButton->setObjectName("secondaryButton");
-    salesReportButton->setObjectName("secondaryButton");
-    refreshButton->setObjectName("secondaryButton");
-    settingsButton->setObjectName("ghostButton");
-
-    QSize buttonSize(ScreenUtils::px(180), ScreenUtils::px(44));
-    addOrderButton->setMinimumSize(buttonSize);
-    settlementButton->setMinimumSize(buttonSize);
-    dailyReportButton->setMinimumSize(buttonSize);
-    salesReportButton->setMinimumSize(buttonSize);
-    refreshButton->setMinimumSize(buttonSize);
-    settingsButton->setMinimumSize(buttonSize);
-    addOrderButton->setFixedHeight(ScreenUtils::px(44));
-    settlementButton->setFixedHeight(ScreenUtils::px(44));
-    dailyReportButton->setFixedHeight(ScreenUtils::px(44));
-    salesReportButton->setFixedHeight(ScreenUtils::px(44));
-    refreshButton->setFixedHeight(ScreenUtils::px(44));
-    settingsButton->setFixedHeight(ScreenUtils::px(44));
-
-    QWidget *tabButtonWidget = new QWidget();
-    QHBoxLayout *tabButtonLayout = new QHBoxLayout(tabButtonWidget);
-    tabButtonLayout->setContentsMargins(0, 0, 0, 0);
-    tabButtonLayout->setSpacing(12);
-    tabButtonLayout->addWidget(addOrderButton);
-    tabButtonLayout->addWidget(refreshButton);
-    tabButtonLayout->addWidget(dailyReportButton);
-    tabButtonLayout->addWidget(salesReportButton);
-    tabButtonLayout->addWidget(settlementButton);
-    tabButtonLayout->addStretch();
-    tabButtonLayout->addWidget(settingsButton);
-
-    tabButtonWidget->setLayout(tabButtonLayout);
-
-    mainLayout->addWidget(tabButtonWidget);
-
-    connect(addOrderButton, &QPushButton::clicked, this, &OrderScreen::onOrderClicked);
-    connect(settlementButton, &QPushButton::clicked, this, &OrderScreen::onSettlementClicked);
-    connect(dailyReportButton, &QPushButton::clicked, this, &OrderScreen::onDailyReportClicked);
-    connect(salesReportButton, &QPushButton::clicked, this, &OrderScreen::onSalesReportClicked);
-    connect(settingsButton, &QPushButton::clicked, this, &OrderScreen::onSettingsClicked);
-    connect(logoutButton, &QPushButton::clicked, this, &OrderScreen::onLogoutClicked);
-    connect(refreshButton, &QPushButton::clicked, this, [this]() {
-        CacheUtils::clearAppCache();
-        fetchDataFromAPI();
+    // Trailing "Add Order" tab-style button (always the last tab)
+    OrderTabButton *addOrderButton = new OrderTabButton();
+    addOrderButton->setTitle("+ Add Order");
+    addOrderButton->setSubtitle("New order");
+    addOrderButton->setSelectable(false);
+    addOrderButton->closeButton->hide();
+    tabWidget->addTab(new QWidget(), "");
+    const int addOrderTabIndex = tabWidget->count() - 1;
+    tabWidget->tabBar()->setTabButton(addOrderTabIndex, QTabBar::LeftSide, addOrderButton);
+    connect(addOrderButton, &OrderTabButton::clicked, this, &OrderScreen::onOrderClicked);
+    connect(tabWidget->tabBar(), &QTabBar::tabBarClicked, this, [this](int index) {
+        if (index == tabWidget->count() - 1) {
+            onOrderClicked();
+        }
     });
+
+    connect(logoutButton, &QPushButton::clicked, this, &OrderScreen::onLogoutClicked);
 
     connect(tabWidget, &QTabWidget::currentChanged, this, &OrderScreen::onTabChanged);
 
@@ -239,7 +231,7 @@ void OrderScreen::onOrderClicked() {
     QString orderTitle = QString("Order #%1").arg(orderNumberCounter, 3, 10, QLatin1Char('0'));
 
     OrderForm *newTab = new OrderForm(tabWidget);
-    int newTabIndex = tabWidget->addTab(newTab, "");
+    int newTabIndex = tabWidget->insertTab(tabWidget->count() - 1, newTab, "");
 
     OrderTabButton *tabButton = new OrderTabButton();
     tabButton->setTitle(orderTitle);

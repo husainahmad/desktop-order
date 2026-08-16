@@ -53,6 +53,11 @@ OrderPaymentPopup::OrderPaymentPopup(const QJsonObject &order, QTabWidget *tabWi
     }
     totalOrder = grandTotal;
 
+    customerName = order["customerName"].toString();
+    remark = order["remark"].toString();
+    serviceTypeId = order["storeServiceTypesId"].toInt();
+    if (serviceTypeId <= 0) serviceTypeId = 1;
+
     QJsonArray orderDetailsArray = order.value("orderDetails").toArray();
 
     // ======================= Order items table =======================
@@ -143,49 +148,6 @@ OrderPaymentPopup::OrderPaymentPopup(const QJsonObject &order, QTabWidget *tabWi
     scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     scrollArea->setFixedHeight(qMin(ScreenUtils::px(300), ScreenUtils::availableHeight() / 3));
     mainLayout->addWidget(scrollArea);
-
-    // ======================= Customer / discount / notes =======================
-    QWidget *detailPanel = new QWidget(this);
-    detailPanel->setObjectName("cardPanel");
-    QGridLayout *detailLayout = new QGridLayout(detailPanel);
-    detailLayout->setContentsMargins(12, 10, 12, 10);
-    detailLayout->setSpacing(8);
-
-    detailLayout->addWidget(new QLabel("Customer Name"), 0, 0);
-    customerNameEdit = new QLineEdit(detailPanel);
-    customerNameEdit->setPlaceholderText("Customer Name");
-    customerNameEdit->setFixedHeight(ScreenUtils::px(34));
-    detailLayout->addWidget(customerNameEdit, 0, 1);
-
-    detailLayout->addWidget(new QLabel("Discount"), 1, 0);
-    discountEdit = new QLineEdit(detailPanel);
-    discountEdit->setPlaceholderText("Discount");
-    discountEdit->setAlignment(Qt::AlignRight);
-    discountEdit->setFixedHeight(ScreenUtils::px(34));
-    detailLayout->addWidget(discountEdit, 1, 1);
-
-    connect(discountEdit, &QLineEdit::textChanged, this, [this]() {
-        double discount = discountEdit->text().toDouble();
-        double total = this->subTotal - discount;
-        if (total < 0) total = 0;
-        totalOrder = total;
-        if (totalSummaryItem) {
-            totalSummaryItem->setText("Rp " + locale.toString(total, 'f', 0));
-        }
-        if (cashTotalText) {
-            cashTotalText->setText("Rp " + locale.toString(total, 'f', 0));
-        }
-        updateCashDisplay();
-    });
-
-    detailLayout->addWidget(new QLabel("Additional Notes"), 2, 0);
-    remarkEdit = new QTextEdit(detailPanel);
-    remarkEdit->setPlaceholderText("Additional notes...");
-    remarkEdit->setFixedHeight(ScreenUtils::px(56));
-    detailLayout->addWidget(remarkEdit, 2, 1);
-    detailPanel->setLayout(detailLayout);
-
-    mainLayout->addWidget(detailPanel);
 
     // ======================= Payment method selection =======================
     paymentGroup = new QButtonGroup(this);
@@ -360,12 +322,12 @@ void OrderPaymentPopup::processPayment() {
     }
 
     QJsonObject confirmData;
-    confirmData["storeServiceTypesId"] = 1;
-    confirmData["customerName"] = customerNameEdit->text();
+    confirmData["storeServiceTypesId"] = serviceTypeId;
+    confirmData["customerName"] = customerName;
     confirmData["customerId"] = -1;
-    confirmData["remark"] = remarkEdit->toPlainText();
+    confirmData["remark"] = remark;
     confirmData["orderDetails"] = orderDetails["orderDetails"].toArray();
-    confirmData["discount"] = discountEdit->text();
+    confirmData["discount"] = locale.toString(orderDetails["discountTotal"].toDouble(), 'f', 0);
 
     const QUrl confirmUrl(configSetting.getApiEndpoint("order", "confirm"));
     if (!confirmUrl.isValid()) {

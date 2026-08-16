@@ -49,6 +49,17 @@ OrderPopupWindow::OrderPopupWindow(const QJsonObject &order, QTabWidget *tabWidg
 
     QString headerText = QString("Order No: %1   |   Customer: %2   |   Date: %3")
                              .arg(orderNo, customerName, orderDateTime);
+
+    QString orderType;
+    switch (order.value("storeServiceTypesId").toInt()) {
+        case 1: orderType = "DINE IN"; break;
+        case 3: orderType = "TAKEWAY"; break;
+        default: orderType = ""; break;
+    }
+    if (!orderType.isEmpty()) {
+        headerText += QString("   |   Type: %1").arg(orderType);
+    }
+
     if (!remark.isEmpty()) {
         headerText += QString("\nRemark: %1").arg(remark);
     }

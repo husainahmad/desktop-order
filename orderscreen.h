@@ -38,7 +38,6 @@ private:
     Ui::OrderScreen *ui;
     QTabWidget *tabWidget;
     QWidget *firstTab;
-    QPushButton *settingsButton;
     QPushButton *logoutButton;
 
     QVBoxLayout *summaryLayout;

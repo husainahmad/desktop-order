@@ -70,6 +70,17 @@ void OrderPrint::sendToReceiptPrinter() {
     // Left-align
     receiptData.append("\x1B\x61\x00");
     receiptData.append(" Customer: " + orderDetails["customerName"].toString().toUtf8() + "\n");
+
+    QString orderType;
+    switch (orderDetails["storeServiceTypesId"].toInt()) {
+        case 1: orderType = "DINE IN"; break;
+        case 3: orderType = "TAKEWAY"; break;
+        default: orderType = ""; break;
+    }
+    if (!orderType.isEmpty()) {
+        receiptData.append(" Type : " + orderType.toUtf8() + "\n");
+    }
+
     QString orderNo = orderDetails["orderNo"].toString();
     QString orderDateStr = orderDetails["createdAt"].toString();
     QDateTime orderDate = QDateTime::fromString(orderDateStr, Qt::ISODate);
@@ -179,6 +190,16 @@ void OrderPrint::sendToKitchenPrinter() {
         receiptData.append("\x1B\x40");
         receiptData.append("\x1B\x61\x00"); // Left align
         receiptData.append(" Customer: " + orderDetails["customerName"].toString().toUtf8() + "\n");
+
+        QString orderType;
+        switch (orderDetails["storeServiceTypesId"].toInt()) {
+            case 1: orderType = "DINE IN"; break;
+            case 3: orderType = "TAKEWAY"; break;
+            default: orderType = ""; break;
+        }
+        if (!orderType.isEmpty()) {
+            receiptData.append(" Type : " + orderType.toUtf8() + "\n");
+        }
 
         QString orderNo = orderDetails["orderNo"].toString();
         QString orderDateStr = orderDetails["createdAt"].toString();

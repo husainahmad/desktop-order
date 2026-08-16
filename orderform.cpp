@@ -25,6 +25,7 @@
 #include "tokenmanager.h"
 #include <QLocale>
 #include <QMessageBox>
+#include <QStyle>
 #include <toast.h>
 #include <orderpaymentpopup.h>
 #include <QProcess>
@@ -63,9 +64,11 @@ OrderForm::OrderForm(QTabWidget *tabWidget, QWidget *parent)
     topLeftLayout->addWidget(searchWidget);
 
     QWidget *topLeftWidget = new QWidget();
+    topLeftWidget->setStyleSheet("background-color: #eef2f7;");
     gridLayout = new QGridLayout(topLeftWidget);
-    gridLayout->setContentsMargins(8, 8, 8, 8);
-    gridLayout->setSpacing(12);
+    gridLayout->setContentsMargins(ScreenUtils::px(12), ScreenUtils::px(12),
+                                   ScreenUtils::px(12), ScreenUtils::px(12));
+    gridLayout->setSpacing(ScreenUtils::px(14));
 
     topLeftWidget->setLayout(gridLayout);
 
@@ -78,14 +81,20 @@ OrderForm::OrderForm(QTabWidget *tabWidget, QWidget *parent)
     topLeftContainer->setLayout(topLeftLayout);
 
     bottomLeftWidget = new QWidget();
-    buttonGridLayout = new QGridLayout(bottomLeftWidget);
-    QScrollArea *bottomScrollArea = new QScrollArea();
-    bottomScrollArea->setWidgetResizable(true);
-    bottomScrollArea->setWidget(bottomLeftWidget);
-    TouchUtils::enableTouchScrolling(bottomScrollArea);
+    buttonGridLayout = new QHBoxLayout(bottomLeftWidget);
+    buttonGridLayout->setContentsMargins(ScreenUtils::px(6), ScreenUtils::px(6),
+                                         ScreenUtils::px(6), ScreenUtils::px(6));
+    buttonGridLayout->setSpacing(ScreenUtils::px(8));
+    categoryScrollArea = new QScrollArea();
+    categoryScrollArea->setWidgetResizable(true);
+    categoryScrollArea->setWidget(bottomLeftWidget);
+    categoryScrollArea->setFrameShape(QFrame::NoFrame);
+    categoryScrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    categoryScrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    TouchUtils::enableTouchScrolling(categoryScrollArea);
 
     leftSplitter->addWidget(topLeftContainer);
-    leftSplitter->addWidget(bottomScrollArea);
+    leftSplitter->addWidget(categoryScrollArea);
 
     QWidget *rightPanel = new QWidget();
     QVBoxLayout *rightLayout = new QVBoxLayout(rightPanel);
@@ -113,26 +122,51 @@ OrderForm::OrderForm(QTabWidget *tabWidget, QWidget *parent)
     summaryGridLayout->setContentsMargins(12, 10, 12, 10);
     summaryGridLayout->setSpacing(8);
 
-    summaryGridLayout->addWidget(new QLabel("Total"), 0, 0);
+    summaryGridLayout->addWidget(new QLabel("Customer Name"), 0, 0);
+    customerNameText = new QLineEdit();
+    customerNameText->setPlaceholderText("Customer Name");
+    customerNameText->setFixedHeight(ScreenUtils::px(34));
+    connect(customerNameText, &QLineEdit::textChanged, this, &OrderForm::updateCurrentTabName);
+    summaryGridLayout->addWidget(customerNameText, 0, 1);
+
+    summaryGridLayout->addWidget(new QLabel("Order Type"), 1, 0);
+    serviceTypeGroup = new QButtonGroup(this);
+    dineInBtn = new QRadioButton("Dine In", this);
+    takeawayBtn = new QRadioButton("Take Away", this);
+    serviceTypeGroup->addButton(dineInBtn, 1);
+    serviceTypeGroup->addButton(takeawayBtn, 3);
+    QWidget *orderTypeWidget = new QWidget();
+    QHBoxLayout *orderTypeLayout = new QHBoxLayout(orderTypeWidget);
+    orderTypeLayout->setContentsMargins(0, 0, 0, 0);
+    orderTypeLayout->setSpacing(12);
+    orderTypeLayout->addWidget(dineInBtn);
+    orderTypeLayout->addWidget(takeawayBtn);
+    orderTypeLayout->addStretch();
+    dineInBtn->setChecked(true);
+    summaryGridLayout->addWidget(orderTypeWidget, 1, 1);
+
+    summaryGridLayout->addWidget(new QLabel("Discount"), 2, 0);
+    discountText = new QLineEdit();
+    discountText->setPlaceholderText("Discount");
+    discountText->setAlignment(Qt::AlignRight);
+    discountText->setFixedHeight(ScreenUtils::px(34));
+    summaryGridLayout->addWidget(discountText, 2, 1);
+
+    summaryGridLayout->addWidget(new QLabel("Total"), 3, 0);
     totalText = new QLineEdit();
     totalText->setPlaceholderText("Total");
     totalText->setAlignment(Qt::AlignRight);
     totalText->setFixedHeight(ScreenUtils::px(34));
     totalText->setObjectName("totalDisplay");
-    summaryGridLayout->addWidget(totalText, 0, 1);
+    summaryGridLayout->addWidget(totalText, 3, 1);
     summaryPanel->setLayout(summaryGridLayout);
 
     rightLayout->addWidget(summaryPanel);
 
-    customerNameText = new QLineEdit(this);
-    customerNameText->setVisible(false);
-    connect(customerNameText, &QLineEdit::textChanged, this, &OrderForm::updateCurrentTabName);
-
-    discountText = new QLineEdit(this);
-    discountText->setVisible(false);
-
     remarkText = new QTextEdit(this);
-    remarkText->setVisible(false);
+    remarkText->setPlaceholderText("Additional notes...");
+    remarkText->setFixedHeight(ScreenUtils::px(56));
+    rightLayout->addWidget(remarkText);
 
     QHBoxLayout *buttonLayout = new QHBoxLayout();
     QPushButton *confirmButton = new QPushButton("Confirm", this);
@@ -158,8 +192,8 @@ OrderForm::OrderForm(QTabWidget *tabWidget, QWidget *parent)
     mainSplitter->addWidget(leftSplitter);
     mainSplitter->addWidget(rightPanel);
 
-    mainSplitter->setStretchFactor(0, 7);
-    mainSplitter->setStretchFactor(1, 3);
+    mainSplitter->setStretchFactor(0, 6);
+    mainSplitter->setStretchFactor(1, 4);
 
     QVBoxLayout *layout = new QVBoxLayout();
     layout->addWidget(mainSplitter);
@@ -168,6 +202,7 @@ OrderForm::OrderForm(QTabWidget *tabWidget, QWidget *parent)
     fetchDataFromAPI();
 
     connect(confirmButton, &QPushButton::clicked, this, &OrderForm::onConfirmButtonClicked);
+    connect(discountText, &QLineEdit::textChanged, this, &OrderForm::populateOrderOnRightPanel);
     connect(printButton, &QPushButton::clicked, this, &OrderForm::printReceipt);
 }
 
@@ -245,41 +280,111 @@ void OrderForm::updateCategoryLeftPanel(const QJsonArray &dataArray) {
         }
         delete child;
     }
+    categoryButtons.clear();
+    categoryButtonIds.clear();
+    activeCategoryButton = nullptr;
 
-    int row = 0, col = 0;
-    const int maxColumns = 5;
     QString firstCatId;
-    const int buttonWidth = ScreenUtils::px(140);
-    const int buttonHeight = ScreenUtils::px(40);
+    const int squareSize = ScreenUtils::px(60);
 
+    buttonGridLayout->addStretch(1);
     for (const QJsonValue &value : dataArray) {
         QJsonObject item = value.toObject();
         QString name = item["name"].toString();
         QString id = QString::number(item["id"].toInt());
 
         QPushButton *button = new QPushButton(name);
-        button->setObjectName("primaryButton");
-        button->setFixedSize(buttonWidth, buttonHeight);
+        button->setObjectName("categoryButton");
+        button->setFixedHeight(squareSize);
+        button->setMinimumWidth(squareSize);
+        button->setToolTip(name);
 
-        connect(button, &QPushButton::clicked, this, [this, id]() {
+        connect(button, &QPushButton::clicked, this, [this, button, id]() {
+            this->setActiveCategory(button, id);
             this->fetchDataDetailProduct(id);
         });
 
-        if (row == 0 && col == 0) {
+        if (firstCatId.isEmpty()) {
             firstCatId = id;
         }
 
-        buttonGridLayout->addWidget(button, row, col);
+        buttonGridLayout->addWidget(button);
+        categoryButtons.append(button);
+        categoryButtonIds.insert(button, id);
+    }
+    buttonGridLayout->addStretch(1);
 
-        if (++col >= maxColumns) {
-            col = 0;
-            row++;
+    QPushButton *activeBtn = nullptr;
+    if (!activeCategoryId.isEmpty()) {
+        for (QPushButton *b : categoryButtons) {
+            if (categoryButtonIds.value(b) == activeCategoryId) {
+                activeBtn = b;
+                break;
+            }
         }
     }
+    if (!activeBtn && !categoryButtons.isEmpty()) {
+        activeBtn = categoryButtons.first();
+        activeCategoryId = categoryButtonIds.value(activeBtn);
+    }
+    setActiveCategory(activeBtn, activeCategoryId);
+
+    layoutCategoryButtons();
 
     if (!firstCatId.isEmpty()) {
         this->fetchDataDetailProduct(firstCatId);
     }
+}
+
+void OrderForm::setActiveCategory(QPushButton *button, const QString &id) {
+    if (activeCategoryButton) {
+        activeCategoryButton->setProperty("active", false);
+        activeCategoryButton->style()->unpolish(activeCategoryButton);
+        activeCategoryButton->style()->polish(activeCategoryButton);
+        activeCategoryButton->update();
+    }
+
+    activeCategoryButton = button;
+    activeCategoryId = id;
+
+    if (button) {
+        button->setProperty("active", true);
+        button->style()->unpolish(button);
+        button->style()->polish(button);
+        button->update();
+    }
+}
+
+void OrderForm::layoutCategoryButtons() {
+    if (categoryButtons.isEmpty()) {
+        return;
+    }
+
+    const int count = categoryButtons.size();
+    int availableWidth = bottomLeftWidget->width()
+                         - buttonGridLayout->contentsMargins().left()
+                         - buttonGridLayout->contentsMargins().right()
+                         - buttonGridLayout->spacing() * (count - 1);
+    int size = availableWidth / count;
+    size = qBound(ScreenUtils::px(60), size, ScreenUtils::px(120));
+
+    const int fontSize = qBound(ScreenUtils::px(11), qRound(size * 0.22), ScreenUtils::px(24));
+
+    for (QPushButton *button : categoryButtons) {
+        button->setFixedHeight(size);
+        button->setMinimumWidth(size);
+        button->setStyleSheet(ScreenUtils::qss(QString(
+            "QPushButton#categoryButton { font-size: %1px; }").arg(fontSize)));
+    }
+
+    if (categoryScrollArea) {
+        categoryScrollArea->setFixedHeight(size + ScreenUtils::px(12));
+    }
+}
+
+void OrderForm::resizeEvent(QResizeEvent *event) {
+    QWidget::resizeEvent(event);
+    layoutCategoryButtons();
 }
 
 void OrderForm::updateProductLeftTopPanel(const QJsonArray &dataArray) {
@@ -316,8 +421,10 @@ void OrderForm::updateProductLeftTopPanel(const QJsonArray &dataArray) {
 
         QWidget *productWidget = createProductGroupWidget(product);
 
-        gridLayout->addWidget(productWidget, row, col);
+        gridLayout->addWidget(productWidget, row, col, Qt::AlignCenter);
         productWidgets.append(productWidget);
+
+        gridLayout->setColumnStretch(col, 1);
 
         col++;
         if (col >= maxColumns) {
@@ -388,6 +495,11 @@ QWidget* OrderForm::createProductGroupWidget(const Product &product) {
     productWidget->setObjectName("productCard");
 
     connect(productWidget, &ProductWidget::clicked, this, [this, product]() {
+        if (product.skus.size() == 1) {
+            const Sku &sku = product.skus.first();
+            updateQuantity(product, sku, true);
+            return;
+        }
         ProductDetailPopup popup(product, this, this);
         popup.exec();
     });
@@ -435,7 +547,13 @@ void OrderForm::onConfirmButtonClicked() {
     }
 
     QJsonObject orderData;
+    double discount = discountText->text().toDouble();
     orderData["subTotal"] = subTotal;
+    orderData["discountTotal"] = discount;
+    orderData["grandTotal"] = subTotal - discount;
+    orderData["customerName"] = customerNameText->text();
+    orderData["remark"] = remarkText->toPlainText();
+    orderData["storeServiceTypesId"] = serviceTypeGroup->checkedId();
     orderData["orderDetails"] = orderItemsArray;
 
     OrderPaymentPopup popup(orderData, this->tabWidget);
@@ -599,7 +717,8 @@ void OrderForm::filterProducts(const QString &query) {
     for (const Product &product : products) {
         if (product.name.contains(query, Qt::CaseInsensitive)) {
             QWidget *productWidget = createProductGroupWidget(product);
-            gridLayout->addWidget(productWidget, row, col);
+            gridLayout->addWidget(productWidget, row, col, Qt::AlignCenter);
+            gridLayout->setColumnStretch(col, 1);
 
             col++;
             if (col >= maxColumns) {

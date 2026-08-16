@@ -62,7 +62,6 @@ DailyReportScreen::DailyReportScreen(QWidget *parent)
     QPushButton *backButton = new QPushButton("Back", this);
     backButton->setObjectName("secondaryButton");
 
-    filterLayout->addWidget(backButton);
     filterLayout->addStretch();
     filterLayout->addWidget(startLabel);
     filterLayout->addWidget(startDateEdit);
@@ -70,6 +69,7 @@ DailyReportScreen::DailyReportScreen(QWidget *parent)
     filterLayout->addWidget(endDateEdit);
     filterLayout->addWidget(loadButton);
     filterLayout->addStretch();
+    filterLayout->addWidget(backButton);
 
     filterWidget->setLayout(filterLayout);
     mainLayout->addWidget(filterWidget);

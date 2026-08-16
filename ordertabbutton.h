@@ -12,6 +12,7 @@
 
 class OrderTabButton : public QWidget
 {
+    Q_OBJECT
 public:
     explicit OrderTabButton(QWidget *parent = nullptr)
         : QWidget(parent)
@@ -45,27 +46,39 @@ public:
 
     void setTitle(const QString &text) { titleLabel->setText(text); }
     void setSubtitle(const QString &text) { subtitleLabel->setText(text); }
+    void setSelectable(bool selectable) { m_selectable = selectable; }
 
     QLabel *titleLabel;
     QLabel *subtitleLabel;
     QPushButton *closeButton;
 
+signals:
+    void clicked();
+
 protected:
     void mousePressEvent(QMouseEvent *event) override
     {
         if (event->button() == Qt::LeftButton) {
-            QTabBar *bar = qobject_cast<QTabBar *>(parentWidget());
-            if (bar) {
-                for (int i = 0; i < bar->count(); ++i) {
-                    if (bar->tabButton(i, QTabBar::LeftSide) == this) {
-                        bar->setCurrentIndex(i);
-                        break;
+            emit clicked();
+            if (m_selectable) {
+                QTabBar *bar = qobject_cast<QTabBar *>(parentWidget());
+                if (bar) {
+                    for (int i = 0; i < bar->count(); ++i) {
+                        if (bar->tabButton(i, QTabBar::LeftSide) == this) {
+                            bar->setCurrentIndex(i);
+                            break;
+                        }
                     }
                 }
             }
+            event->accept();
+            return;
         }
         QWidget::mousePressEvent(event);
     }
+
+private:
+    bool m_selectable = true;
 };
 
 #endif // ORDERTABBUTTON_H

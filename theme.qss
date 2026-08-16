@@ -69,6 +69,29 @@ QPushButton#ghostButton {
 }
 QPushButton#ghostButton:hover { background-color: #eff6ff; border-color: #2563eb; }
 
+/* Square category buttons (single-line strip) */
+QPushButton#categoryButton {
+    background-color: #0f172a;
+    color: #ffffff;
+    border: none;
+    border-radius: 10px;
+
+    padding-left: 16px;
+    padding-right: 16px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+
+    font-weight: 600;
+    font-size: 13px;
+}
+QPushButton#categoryButton:hover { background-color: #2563eb; }
+QPushButton#categoryButton:pressed { background-color: #1e40af; }
+QPushButton#categoryButton[active="true"] {
+    background-color: #2563eb;
+    color: #ffffff;
+    border: 2px solid #bfdbfe;
+}
+
 /* Checkable payment-method option buttons */
 QPushButton#paymentOptionButton {
     background-color: #f1f5f9;
@@ -113,6 +136,23 @@ QPushButton#navButton {
 }
 QPushButton#navButton:hover { background-color: rgba(255, 255, 255, 0.22); }
 QPushButton#navButton:pressed { background-color: rgba(255, 255, 255, 0.08); }
+
+/* ---------- Header toolbar ---------- */
+QToolBar {
+    background: transparent;
+    border: none;
+    spacing: 8px;
+}
+QToolButton {
+    color: #ffffff;
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-weight: 600;
+}
+QToolButton:hover { background: rgba(255, 255, 255, 0.15); }
+QToolButton:pressed { background: rgba(255, 255, 255, 0.25); }
 
 /* ---------- Order tab button ---------- */
 QLabel#tabTitleLabel {
@@ -370,7 +410,7 @@ QWidget#productCard {
 }
 QWidget#productCard:hover {
     border: 1px solid #2563eb;
-    background-color: #f0f6ff;
+    background-color: #dbeafe;
 }
 QWidget#skuCard {
     background-color: #f8fafc;

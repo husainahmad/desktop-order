@@ -1,5 +1,4 @@
 #include "ordersummary.h"
-#include "ui_ordersummary.h"
 #include "touchutils.h"
 
 #include <QMap>
@@ -15,10 +14,7 @@
 
 OrderSummary::OrderSummary(const QJsonArray &dataArray, QWidget *parent)
     : QWidget(parent)
-    , ui(new Ui::OrderSummary)
 {
-    ui->setupUi(this);
-
     // Step 1: Extract & Aggregate Sales Data
     QMap<QString, double> itemSalesMap;
 
@@ -140,5 +136,4 @@ OrderSummary::OrderSummary(const QJsonArray &dataArray, QWidget *parent)
 
 OrderSummary::~OrderSummary()
 {
-    delete ui;
 }

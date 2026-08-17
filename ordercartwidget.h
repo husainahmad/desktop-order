@@ -7,10 +7,6 @@
 #include "orderform.h"
 #include "setting.h"
 
-namespace Ui {
-class OrderCartWidget;
-}
-
 class OrderCartWidget : public QWidget
 {
     Q_OBJECT
@@ -28,7 +24,6 @@ signals:
 private slots:
 
 private:
-    Ui::OrderCartWidget *ui;
     OrderForm *orderForm;
     double subTotal;
     QVBoxLayout *m_skuLayout = nullptr;

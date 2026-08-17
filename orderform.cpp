@@ -1,5 +1,4 @@
 #include "orderform.h"
-#include "ui_orderform.h"
 #include "touchutils.h"
 #include "screenutils.h"
 #include "apiclient.h"
@@ -18,27 +17,23 @@
 #include <QFile>
 #include <QStandardPaths>
 #include <product.h>
-#include <cartitemwidget.h>
 #include <ordercartwidget.h>
 #include "orderitem.h"
 #include "orderitemsku.h"
 #include "productimage.h"
 #include "productwidget.h"
 #include "productdetailpopup.h"
+#include "skuwidget.h"
 #include "tokenmanager.h"
 #include <QLocale>
 #include <QMessageBox>
-#include <QStyle>
-#include <toast.h>
 #include <orderpaymentpopup.h>
 #include <QProcess>
 #include <orderprint.h>
 
 OrderForm::OrderForm(QTabWidget *tabWidget, QWidget *parent)
-    : QWidget(parent), ui(new Ui::OrderForm), tabWidget(tabWidget)
+    : QWidget(parent), tabWidget(tabWidget)
 {
-    ui->setupUi(this);
-
     locale = QLocale::English;
 
     QSplitter *mainSplitter = new QSplitter(Qt::Horizontal, this);
@@ -69,9 +64,9 @@ OrderForm::OrderForm(QTabWidget *tabWidget, QWidget *parent)
     QWidget *topLeftWidget = new QWidget();
     topLeftWidget->setStyleSheet("background-color: #eef2f7;");
     gridLayout = new QGridLayout(topLeftWidget);
-    gridLayout->setContentsMargins(ScreenUtils::px(12), ScreenUtils::px(12),
-                                   ScreenUtils::px(12), ScreenUtils::px(12));
-    gridLayout->setSpacing(ScreenUtils::px(14));
+    gridLayout->setContentsMargins(ScreenUtils::px(2), ScreenUtils::px(2),
+                                   ScreenUtils::px(2), ScreenUtils::px(2));
+    gridLayout->setSpacing(ScreenUtils::px(4));
 
     topLeftWidget->setLayout(gridLayout);
 
@@ -109,8 +104,8 @@ OrderForm::OrderForm(QTabWidget *tabWidget, QWidget *parent)
     QWidget *cartPanel = new QWidget();
     cartPanel->setObjectName("cardPanel");
     cartLayout = new QVBoxLayout(cartPanel);
-    cartLayout->setContentsMargins(8, 8, 8, 8);
-    cartLayout->setSpacing(8);
+    cartLayout->setContentsMargins(4, 4, 4, 4);
+    cartLayout->setSpacing(4);
 
     QScrollArea *rightScrollArea = new QScrollArea();
     rightScrollArea->setWidgetResizable(true);
@@ -405,7 +400,7 @@ void OrderForm::updateProductLeftTopPanel(const QJsonArray &dataArray) {
     products.clear();
 
     int row = 0, col = 0;
-    int maxColumns = 4;
+    int maxColumns = 5;
 
     for (const QJsonValue &value : dataArray) {
         QJsonObject item = value.toObject();
@@ -743,7 +738,7 @@ void OrderForm::filterProducts(const QString &query) {
     }
 
     int row = 0, col = 0;
-    int maxColumns = 4;
+    int maxColumns = 5;
 
     for (const Product &product : products) {
         if (product.name.contains(query, Qt::CaseInsensitive)) {
@@ -761,5 +756,4 @@ void OrderForm::filterProducts(const QString &query) {
 }
 
 OrderForm::~OrderForm() {
-    delete ui;
 }

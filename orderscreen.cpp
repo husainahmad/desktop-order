@@ -1,7 +1,6 @@
 #include "orderscreen.h"
 #include "orderform.h"
 #include "ordertabbutton.h"
-#include "ui_orderscreen.h"
 #include "ordersummary.h"
 #include "ordertablewidget.h"
 #include "orderprint.h"
@@ -33,10 +32,7 @@
 
 OrderScreen::OrderScreen(QWidget *parent)
     : QWidget(parent)
-    , ui(new Ui::OrderScreen)
 {
-    ui->setupUi(this);
-
     locale = QLocale::English;
 
     setWindowTitle("Daily Order");
@@ -296,13 +292,25 @@ void OrderScreen::closeEvent(QCloseEvent *event) {
 void OrderScreen::onDailyReportClicked() {
     DailyReportScreen *dailyReportScreen = new DailyReportScreen();
     dailyReportScreen->setAttribute(Qt::WA_DeleteOnClose);
-    dailyReportScreen->show();
+
+    connect(dailyReportScreen, &DailyReportScreen::backRequested, this, [this]() {
+        this->showFullScreen();
+    });
+
+    this->hide();
+    dailyReportScreen->showFullScreen();
 }
 
 void OrderScreen::onSalesReportClicked() {
     SalesReportScreen *salesReportScreen = new SalesReportScreen();
     salesReportScreen->setAttribute(Qt::WA_DeleteOnClose);
-    salesReportScreen->show();
+
+    connect(salesReportScreen, &SalesReportScreen::backRequested, this, [this]() {
+        this->showFullScreen();
+    });
+
+    this->hide();
+    salesReportScreen->showFullScreen();
 }
 
 void OrderScreen::onSettingsClicked() {
@@ -344,5 +352,4 @@ void OrderScreen::onLogoutClicked() {
 
 OrderScreen::~OrderScreen()
 {
-    delete ui;
 }

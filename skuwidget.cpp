@@ -1,5 +1,4 @@
 #include "skuwidget.h"
-#include "ui_skuwidget.h"
 #include "product.h"
 #include "sku.h"
 #include "screenutils.h"
@@ -12,10 +11,8 @@
 
 SkuWidget::SkuWidget(Product product, OrderForm *orderForm, QWidget *parent)
     : QWidget(parent)
-    , ui(new Ui::SkuWidget), orderForm(orderForm)
+    , orderForm(orderForm)
 {
-    ui->setupUi(this);
-
     QVBoxLayout *skuLayout = new QVBoxLayout(this);
     skuLayout->setContentsMargins(ScreenUtils::px(10), ScreenUtils::px(10), ScreenUtils::px(10), ScreenUtils::px(10));
     skuLayout->setSpacing(ScreenUtils::px(10));
@@ -59,5 +56,4 @@ SkuWidget::SkuWidget(Product product, OrderForm *orderForm, QWidget *parent)
 
 SkuWidget::~SkuWidget()
 {
-    delete ui;
 }

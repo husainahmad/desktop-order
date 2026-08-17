@@ -26,10 +26,6 @@
 class OrderCartWidget;
 class QScrollArea;
 
-namespace Ui {
-class OrderForm;
-}
-
 class OrderForm : public QWidget
 {
     Q_OBJECT
@@ -60,7 +56,6 @@ private slots:
     void updateCurrentTabName(const QString &newName);
     void printReceipt();
 private:
-    Ui::OrderForm *ui;
     QTabWidget *tabWidget;
     QWidget *bottomLeftWidget;
     QHBoxLayout *buttonGridLayout;

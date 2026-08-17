@@ -1,7 +1,6 @@
 <RCC>
     <qresource prefix="/">
         <file>assets/images/pizza.png</file>
-        <file>assets/images/race-flag.png</file>
         <file>theme.qss</file>
     </qresource>
 </RCC>

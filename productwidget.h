@@ -10,10 +10,6 @@
 #include <QEvent>
 #include "product.h"
 
-namespace Ui {
-class ProductWidget;
-}
-
 class ProductWidget : public QWidget
 {
     Q_OBJECT
@@ -33,7 +29,6 @@ protected:
 private slots:
     void setImageFromBase64(QLabel *label, const QString &base64String);
 private:
-    Ui::ProductWidget *ui;
     QLocale locale;
     QLabel *hoverBadge = nullptr;
     QLabel *m_imageLabel = nullptr;

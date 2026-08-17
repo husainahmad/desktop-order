@@ -8,10 +8,6 @@
 #include <QLocale>
 #include "setting.h"
 
-namespace Ui {
-class OrderScreen;
-}
-
 class OrderScreen : public QWidget
 {
     Q_OBJECT
@@ -35,7 +31,6 @@ private slots:
     void onLogoutClicked();
 
 private:
-    Ui::OrderScreen *ui;
     QTabWidget *tabWidget;
     QWidget *firstTab;
     QPushButton *logoutButton;

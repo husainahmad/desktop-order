@@ -3,10 +3,6 @@
 
 #include <QWidget>
 
-namespace Ui {
-class OrderSummary;
-}
-
 class OrderSummary : public QWidget
 {
     Q_OBJECT
@@ -14,9 +10,6 @@ class OrderSummary : public QWidget
 public:
     explicit OrderSummary(const QJsonArray &dataArray, QWidget *parent = nullptr);
     ~OrderSummary();
-
-private:
-    Ui::OrderSummary *ui;
 };
 
 #endif // ORDERSUMMARY_H

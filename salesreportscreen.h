@@ -4,7 +4,6 @@
 #include <QWidget>
 #include <QTableWidget>
 #include <QDateEdit>
-#include <QNetworkAccessManager>
 #include <QLocale>
 #include "setting.h"
 
@@ -16,8 +15,12 @@ public:
     explicit SalesReportScreen(QWidget *parent = nullptr);
     ~SalesReportScreen();
 
+signals:
+    void backRequested();
+
 private slots:
     void fetchSalesReport();
+    void onBackClicked();
 
 private:
     void parseSalesReportResponse(const QByteArray &responseData);
@@ -25,7 +28,6 @@ private:
     QTableWidget *tableWidget;
     QDateEdit *startDateEdit;
     QDateEdit *endDateEdit;
-    QNetworkAccessManager *networkManager;
     Setting settingConfig;
     QLocale locale;
 };

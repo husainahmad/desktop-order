@@ -1,5 +1,4 @@
 #include "productwidget.h"
-#include "ui_productwidget.h"
 #include <QVBoxLayout>
 #include <QLabel>
 #include <QPixmap>
@@ -10,40 +9,39 @@
 #include "screenutils.h"
 
 ProductWidget::ProductWidget(Product product, QWidget *parent)
-    : QWidget(parent), ui(new Ui::ProductWidget)
+    : QWidget(parent)
 {
-    ui->setupUi(this);
     locale = QLocale::English;
 
     setObjectName("productCard");
     setCursor(Qt::PointingHandCursor);
     setAttribute(Qt::WA_Hover, true);
-    setFixedSize(ScreenUtils::px(190), ScreenUtils::px(228));
+    setFixedSize(ScreenUtils::px(150), ScreenUtils::px(196));
 
     QGraphicsDropShadowEffect *shadowEffect = new QGraphicsDropShadowEffect(this);
-    shadowEffect->setBlurRadius(ScreenUtils::px(14));
-    shadowEffect->setOffset(0, ScreenUtils::px(3));
-    shadowEffect->setColor(QColor(15, 23, 42, 35));
+    shadowEffect->setBlurRadius(ScreenUtils::px(8));
+    shadowEffect->setOffset(0, ScreenUtils::px(2));
+    shadowEffect->setColor(QColor(15, 23, 42, 30));
     setGraphicsEffect(shadowEffect);
 
     // Create layout
     QVBoxLayout *productLayout = new QVBoxLayout(this);
-    productLayout->setContentsMargins(ScreenUtils::px(12), ScreenUtils::px(14),
-                                      ScreenUtils::px(12), ScreenUtils::px(12));
-    productLayout->setSpacing(ScreenUtils::px(8));
+    productLayout->setContentsMargins(ScreenUtils::px(8), ScreenUtils::px(8),
+                                      ScreenUtils::px(8), ScreenUtils::px(8));
+    productLayout->setSpacing(ScreenUtils::px(5));
 
     // Create image label
     QLabel *imageLabel = new QLabel(this);
-    imageLabel->setFixedSize(ScreenUtils::px(120), ScreenUtils::px(120));
+    imageLabel->setFixedSize(ScreenUtils::px(110), ScreenUtils::px(110));
     imageLabel->setAlignment(Qt::AlignCenter);
     imageLabel->setStyleSheet(ScreenUtils::qss(
-        "background-color: #f8fafc; border-radius: 14px;"));
+        "background-color: #f8fafc; border-radius: 12px;"));
     m_imageLabel = imageLabel;
 
     // Load image
     if (product.productImage.imageBlob.isEmpty()) {
         QPixmap pixmap(product.imagePath);
-        imageLabel->setPixmap(pixmap.scaled(ScreenUtils::px(104), ScreenUtils::px(104),
+        imageLabel->setPixmap(pixmap.scaled(ScreenUtils::px(96), ScreenUtils::px(96),
                                             Qt::KeepAspectRatio, Qt::SmoothTransformation));
     } else {
         setImageFromBase64(imageLabel, product.productImage.imageBlob);
@@ -53,9 +51,9 @@ ProductWidget::ProductWidget(Product product, QWidget *parent)
     QLabel *nameLabel = new QLabel(product.name, this);
     nameLabel->setAlignment(Qt::AlignCenter);
     nameLabel->setWordWrap(true);
-    nameLabel->setMinimumHeight(ScreenUtils::px(25));
+    nameLabel->setMinimumHeight(ScreenUtils::px(20));
     nameLabel->setStyleSheet(ScreenUtils::qss(
-        "font-size: 14px; font-weight: 600; color: #0f172a; background: transparent;"));
+        "font-size: 13px; font-weight: 600; color: #0f172a; background: transparent;"));
 
     // Create price label (starting price from the lowest SKU)
     double minPrice = 0;
@@ -71,19 +69,19 @@ ProductWidget::ProductWidget(Product product, QWidget *parent)
     QLabel *priceLabel = new QLabel("Rp " + locale.toString(minPrice, 'f', 0), this);
     priceLabel->setAlignment(Qt::AlignCenter);
     priceLabel->setStyleSheet(ScreenUtils::qss(
-        "color: #16a34a; font-size: 13px; font-weight: 700; background: transparent;"
-        "border: 1px solid #bbf7d0; border-radius: 10px; padding: 2px 5px;"));
+        "color: #16a34a; font-size: 12px; font-weight: 700; background: transparent;"
+        "border: 1px solid #bbf7d0; border-radius: 8px; padding: 1px 4px;"));
     if (product.skus.isEmpty()) {
         priceLabel->hide();
     }
 
     // Hover indicator badge shown at the top-right of the image
     hoverBadge = new QLabel("+", imageLabel);
-    hoverBadge->setFixedSize(ScreenUtils::px(38), ScreenUtils::px(38));
+    hoverBadge->setFixedSize(ScreenUtils::px(34), ScreenUtils::px(34));
     hoverBadge->setAlignment(Qt::AlignCenter);
     hoverBadge->setStyleSheet(ScreenUtils::qss(
         "background-color: #2563eb; color: #ffffff; border: 2px solid #ffffff;"
-        "border-radius: 19px; font-size: 24px; font-weight: bold;"));
+        "border-radius: 17px; font-size: 20px; font-weight: bold;"));
     hoverBadge->move(imageLabel->width() - hoverBadge->width() - ScreenUtils::px(6),
                      ScreenUtils::px(6));
     hoverBadge->hide();
@@ -97,9 +95,9 @@ ProductWidget::ProductWidget(Product product, QWidget *parent)
     setStyleSheet(ScreenUtils::qss(
         "QWidget#productCard {"
         "   border: 1px solid #e2e8f0;"
-        "   border-radius: 16px;"
+        "   border-radius: 12px;"
         "   background-color: #ffffff;"
-        "   padding: 4px;"
+        "   padding: 2px;"
         "}"
         "QWidget#productCard:hover {"
         "   border: 2px solid #2563eb;"
@@ -129,7 +127,7 @@ void ProductWidget::enterEvent(QEnterEvent *event)
     }
     if (m_imageLabel) {
         m_imageLabel->setStyleSheet(ScreenUtils::qss(
-            "background-color: #dbeafe; border-radius: 14px;"));
+            "background-color: #dbeafe; border-radius: 12px;"));
     }
     QWidget::enterEvent(event);
 }
@@ -141,7 +139,7 @@ void ProductWidget::leaveEvent(QEvent *event)
     }
     if (m_imageLabel) {
         m_imageLabel->setStyleSheet(ScreenUtils::qss(
-            "background-color: #f8fafc; border-radius: 14px;"));
+            "background-color: #f8fafc; border-radius: 12px;"));
     }
     QWidget::leaveEvent(event);
 }
@@ -165,5 +163,4 @@ void ProductWidget::setImageFromBase64(QLabel *label, const QString &base64Strin
 
 ProductWidget::~ProductWidget()
 {
-    delete ui;
 }

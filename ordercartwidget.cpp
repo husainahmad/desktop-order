@@ -1,5 +1,4 @@
 #include "ordercartwidget.h"
-#include "ui_ordercartwidget.h"
 #include "orderitem.h"
 #include "orderitemsku.h"
 #include "orderform.h"
@@ -11,15 +10,13 @@
 #include <QPushButton>
 
 OrderCartWidget::OrderCartWidget(OrderItem orderItem, OrderForm *orderForm, QWidget *parent)
-    : QWidget(parent), ui(new Ui::OrderCartWidget), orderForm(orderForm) {
-    ui->setupUi(this);
-
+    : QWidget(parent), orderForm(orderForm) {
     locale = QLocale::English;
 
     QHBoxLayout *layout = new QHBoxLayout(this);
     layout->setAlignment(Qt::AlignTop);
-    layout->setSpacing(8);
-    layout->setContentsMargins(10, 10, 10, 10);
+    layout->setSpacing(6);
+    layout->setContentsMargins(6, 6, 6, 6);
 
     QLabel *productNameLabel = new QLabel(orderItem.productName, this);
     productNameLabel->setStyleSheet(ScreenUtils::qss(
@@ -127,5 +124,4 @@ double OrderCartWidget::getTotal() {
 
 OrderCartWidget::~OrderCartWidget()
 {
-    delete ui;
 }

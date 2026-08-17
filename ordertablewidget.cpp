@@ -1,5 +1,4 @@
 #include "ordertablewidget.h"
-#include "ui_ordertablewidget.h"
 #include "orderpopupwindow.h"
 #include "touchutils.h"
 #include "screenutils.h"
@@ -22,9 +21,8 @@
 
 OrderTableWidget::OrderTableWidget(const QJsonArray &dataArray, QTabWidget *tabWidget, QWidget *parent)
     : QWidget(parent)
-    , ui(new Ui::OrderTableWidget), tabWidget(tabWidget)
+    , tabWidget(tabWidget)
 {
-    ui->setupUi(this);
 
     QVBoxLayout *mainLayout = new QVBoxLayout(this);
     mainLayout->setSpacing(0);
@@ -138,5 +136,4 @@ OrderTableWidget::OrderTableWidget(const QJsonArray &dataArray, QTabWidget *tabW
 
 OrderTableWidget::~OrderTableWidget()
 {
-    delete ui;
 }

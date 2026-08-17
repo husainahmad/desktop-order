@@ -4,10 +4,6 @@
 #include <QWidget>
 #include <QTabWidget>
 
-namespace Ui {
-class OrderTableWidget;
-}
-
 class OrderTableWidget : public QWidget
 {
     Q_OBJECT
@@ -17,7 +13,6 @@ public:
     ~OrderTableWidget();
 
 private:
-    Ui::OrderTableWidget *ui;
     QTabWidget *tabWidget;
 };
 

@@ -7,10 +7,6 @@
 #include <QPushButton>
 #include <setting.h>
 
-namespace Ui {
-class LoginScreen;
-}
-
 class LoginScreen : public QWidget
 {
     Q_OBJECT
@@ -24,7 +20,6 @@ private slots:
     void handleUserDetail();
 
 private:
-    Ui::LoginScreen *ui;
     QLineEdit *usernameEdit;
     QLineEdit *passwordEdit;
     QPushButton *loginButton;

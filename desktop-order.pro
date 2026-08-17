@@ -38,7 +38,6 @@ SOURCES += \
     sku.cpp \
     skuwidget.cpp \
     store.cpp \
-    toast.cpp \
     tokenmanager.cpp \
     user.cpp
 
@@ -73,20 +72,9 @@ HEADERS += \
     sku.h \
     skuwidget.h \
     store.h \
-    toast.h \
     tokenmanager.h \
     touchutils.h \
     user.h
-
-FORMS += \
-    loginscreen.ui \
-    ordercartwidget.ui \
-    orderform.ui \
-    orderscreen.ui \
-    ordersummary.ui \
-    ordertablewidget.ui \
-    productwidget.ui \
-    skuwidget.ui
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin

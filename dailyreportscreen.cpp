@@ -9,8 +9,6 @@
 #include <QLabel>
 #include <QPushButton>
 #include <QHeaderView>
-#include <QNetworkRequest>
-#include <QNetworkReply>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
@@ -102,10 +100,15 @@ DailyReportScreen::DailyReportScreen(QWidget *parent)
 
     connect(loadButton, &QPushButton::clicked, this, &DailyReportScreen::fetchDailyReport);
     connect(loadButton, &QPushButton::clicked, this, &DailyReportScreen::fetchOrderVolumeReport);
-    connect(backButton, &QPushButton::clicked, this, &DailyReportScreen::close);
+    connect(backButton, &QPushButton::clicked, this, &DailyReportScreen::onBackClicked);
 
     fetchDailyReport();
     fetchOrderVolumeReport();
+}
+
+void DailyReportScreen::onBackClicked() {
+    emit backRequested();
+    close();
 }
 
 void DailyReportScreen::fetchDailyReport() {

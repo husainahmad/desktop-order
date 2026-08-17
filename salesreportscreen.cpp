@@ -9,8 +9,6 @@
 #include <QLabel>
 #include <QPushButton>
 #include <QHeaderView>
-#include <QNetworkRequest>
-#include <QNetworkReply>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
@@ -86,9 +84,14 @@ SalesReportScreen::SalesReportScreen(QWidget *parent)
     setLayout(mainLayout);
 
     connect(loadButton, &QPushButton::clicked, this, &SalesReportScreen::fetchSalesReport);
-    connect(backButton, &QPushButton::clicked, this, &SalesReportScreen::close);
+    connect(backButton, &QPushButton::clicked, this, &SalesReportScreen::onBackClicked);
 
     fetchSalesReport();
+}
+
+void SalesReportScreen::onBackClicked() {
+    emit backRequested();
+    close();
 }
 
 void SalesReportScreen::fetchSalesReport() {

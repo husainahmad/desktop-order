@@ -6,10 +6,6 @@
 #include "product.h"
 #include "orderform.h"
 
-namespace Ui {
-class SkuWidget;
-}
-
 class SkuWidget : public QWidget
 {
     Q_OBJECT
@@ -21,7 +17,6 @@ signals:
     void updateQuantity(const Product &product, const Sku &sku, bool add);
 
 private:
-    Ui::SkuWidget *ui;
     OrderForm *orderForm;
 };
 

@@ -64,17 +64,38 @@ void ApiClient::put(const QUrl &url, const QByteArray &body, SuccessFn success, 
          std::move(success), std::move(error));
 }
 
+bool ApiClient::isAuthUrl(const QUrl &url) {
+    const QString path = url.path();
+    const QString host = url.host();
+
+    // Skip auth header for login and refresh-token endpoints
+    if (path.contains("/auth/login") || path.contains("/auth/refresh-token")) {
+        return false;
+    }
+
+    // Only add Authorization header for non-localhost hosts (and not auth endpoints)
+    if (host.isEmpty() || host == "127.0.0.1" || host == "localhost") {
+        return false;
+    }
+
+    return true;
+}
+
 void ApiClient::send(QNetworkAccessManager::Operation op, const QUrl &url, const QByteArray &body,
                      int retriesRemaining, SuccessFn success, ErrorFn error)
 {
     adjustPendingRequests(+1);
 
     QNetworkRequest request(url);
-    const QString token = TokenManager::instance().getAccessToken();
-    if (!token.isEmpty()) {
-        request.setRawHeader("Authorization", "Bearer " + token.toUtf8());
-    }
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+
+    // Only add Authorization header for non-auth endpoints (skip login/refresh)
+    if (isAuthUrl(url)) {
+        const QString token = TokenManager::instance().getAccessToken();
+        if (!token.isEmpty()) {
+            request.setRawHeader("Authorization", "Bearer " + token.toUtf8());
+        }
+    }
 
     QNetworkReply *reply = nullptr;
     switch (op) {
@@ -141,6 +162,10 @@ void ApiClient::handleFinished(QNetworkReply *reply, QNetworkAccessManager::Oper
                 }
             });
         return;
+    }
+
+    if (httpStatus == 403) {
+        qWarning() << "API 403 Forbidden - check auth token validity or IP restrictions";
     }
 
     adjustPendingRequests(-1);

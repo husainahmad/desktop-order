@@ -36,6 +36,7 @@ private:
                         const QUrl &url, const QByteArray &body, int retriesRemaining,
                         SuccessFn success, ErrorFn error);
     void adjustPendingRequests(int delta);
+    bool isAuthUrl(const QUrl &url);
 
     QNetworkAccessManager m_manager;
     int m_pendingRequests = 0;

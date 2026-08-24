@@ -362,7 +362,7 @@ void OrderPaymentPopup::processPayment() {
     confirmData["customerId"] = -1;
     confirmData["remark"] = remark;
     confirmData["orderDetails"] = orderDetails["orderDetails"].toArray();
-    confirmData["discount"] = locale.toString(orderDetails["discountTotal"].toDouble(), 'f', 0);
+    confirmData["discount"] = orderDetails["discountTotal"].toDouble();
 
     const QUrl confirmUrl(configSetting.getApiEndpoint("order", "confirm"));
     if (!confirmUrl.isValid()) {

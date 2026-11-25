@@ -4,6 +4,7 @@
 #include <QDialog>
 #include <QLocale>
 #include <QHash>
+#include <QPixmap>
 #include "product.h"
 
 class QLabel;
@@ -25,7 +26,7 @@ private slots:
 
 private:
     void refreshSkuCount(int skuId);
-    void setImageFromBase64(QLabel *label, const QString &base64String);
+    void applyPixmap(QLabel *label, const QPixmap &pixmap);
 
     Product m_product;
     OrderForm *m_orderForm;

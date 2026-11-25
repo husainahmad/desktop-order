@@ -8,11 +8,11 @@ class ProductImage
 public:
     int id;
     QString fileName;
-    QString imageBlob;
+    QString url;
     QString mimeType;
 
     ProductImage();
-    ProductImage(int id, QString fileName, QString imageBlob, QString mimeType);
+    ProductImage(int id, QString fileName, QString url, QString mimeType);
 };
 
 #endif // PRODUCTIMAGE_H

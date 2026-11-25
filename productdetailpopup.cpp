@@ -1,5 +1,6 @@
 #include "productdetailpopup.h"
 #include "orderform.h"
+#include "imageloader.h"
 #include "screenutils.h"
 #include "touchutils.h"
 
@@ -47,11 +48,26 @@ ProductDetailPopup::ProductDetailPopup(const Product &product, OrderForm *orderF
     imageLabel->setFixedSize(ScreenUtils::px(110), ScreenUtils::px(110));
     imageLabel->setAlignment(Qt::AlignCenter);
 
-    if (m_product.productImage.imageBlob.isEmpty()) {
-        QPixmap pixmap(m_product.imagePath);
-        imageLabel->setPixmap(pixmap.scaled(imageLabel->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
-    } else {
-        setImageFromBase64(imageLabel, m_product.productImage.imageBlob);
+    // Load image: prefer the hosted URL and fall back to the bundled asset while
+    // it downloads, or when the product has no image at all.
+    const QString imageUrl = m_product.productImage.url;
+    QPixmap placeholder(m_product.imagePath);
+    if (!placeholder.isNull()) {
+        imageLabel->setPixmap(placeholder.scaled(imageLabel->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
+    }
+    if (!imageUrl.isEmpty()) {
+        QPixmap cached = ImageLoader::instance().cached(imageUrl);
+        if (!cached.isNull()) {
+            applyPixmap(imageLabel, cached);
+        } else {
+            connect(&ImageLoader::instance(), &ImageLoader::imageLoaded, this,
+                    [this, imageLabel, imageUrl](const QString &loadedUrl, const QPixmap &pixmap) {
+                        if (loadedUrl == imageUrl) {
+                            applyPixmap(imageLabel, pixmap);
+                        }
+                    });
+            ImageLoader::instance().request(imageUrl);
+        }
     }
 
     QLabel *nameLabel = new QLabel(m_product.name, headerCard);
@@ -185,17 +201,10 @@ void ProductDetailPopup::refreshSkuCount(int skuId)
     }
 }
 
-void ProductDetailPopup::setImageFromBase64(QLabel *label, const QString &base64String)
+void ProductDetailPopup::applyPixmap(QLabel *label, const QPixmap &pixmap)
 {
-    QByteArray byteArray = QByteArray::fromBase64(base64String.toUtf8());
-
-    QImage image;
-    if (!image.loadFromData(byteArray)) {
-        qDebug() << "Failed to load image from Base64 data.";
+    if (!label || pixmap.isNull()) {
         return;
     }
-
-    label->setPixmap(QPixmap::fromImage(image));
-    label->setFixedSize(ScreenUtils::px(110), ScreenUtils::px(110));
-    label->setScaledContents(true);
+    label->setPixmap(pixmap.scaled(label->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
 }

@@ -15,6 +15,7 @@ SOURCES += \
     cacheutils.cpp \
     chain.cpp \
     dailyreportscreen.cpp \
+    imageloader.cpp \
     loginscreen.cpp \
     main.cpp \
     order.cpp \
@@ -48,6 +49,7 @@ HEADERS += \
     cacheutils.h \
     chain.h \
     dailyreportscreen.h \
+    imageloader.h \
     loginscreen.h \
     order.h \
     ordercartwidget.h \

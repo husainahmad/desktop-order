@@ -6,6 +6,7 @@
 #include <QGraphicsDropShadowEffect>
 #include "product.h"
 #include "sku.h"
+#include "imageloader.h"
 #include "screenutils.h"
 
 ProductWidget::ProductWidget(Product product, QWidget *parent)
@@ -38,13 +39,27 @@ ProductWidget::ProductWidget(Product product, QWidget *parent)
         "background-color: #f8fafc; border-radius: 12px;"));
     m_imageLabel = imageLabel;
 
-    // Load image
-    if (product.productImage.imageBlob.isEmpty()) {
-        QPixmap pixmap(product.imagePath);
-        imageLabel->setPixmap(pixmap.scaled(ScreenUtils::px(96), ScreenUtils::px(96),
-                                            Qt::KeepAspectRatio, Qt::SmoothTransformation));
-    } else {
-        setImageFromBase64(imageLabel, product.productImage.imageBlob);
+    // Load image: prefer the hosted URL and fall back to the bundled asset while
+    // it downloads, or when the product has no image at all.
+    const QString imageUrl = product.productImage.url;
+    QPixmap placeholder(product.imagePath);
+    if (!placeholder.isNull()) {
+        imageLabel->setPixmap(placeholder.scaled(ScreenUtils::px(96), ScreenUtils::px(96),
+                                                 Qt::KeepAspectRatio, Qt::SmoothTransformation));
+    }
+    if (!imageUrl.isEmpty()) {
+        QPixmap cached = ImageLoader::instance().cached(imageUrl);
+        if (!cached.isNull()) {
+            applyPixmap(imageLabel, cached);
+        } else {
+            connect(&ImageLoader::instance(), &ImageLoader::imageLoaded, this,
+                    [this, imageUrl](const QString &loadedUrl, const QPixmap &pixmap) {
+                        if (loadedUrl == imageUrl) {
+                            applyPixmap(m_imageLabel, pixmap);
+                        }
+                    });
+            ImageLoader::instance().request(imageUrl);
+        }
     }
 
     // Create name label
@@ -144,21 +159,12 @@ void ProductWidget::leaveEvent(QEvent *event)
     QWidget::leaveEvent(event);
 }
 
-void ProductWidget::setImageFromBase64(QLabel *label, const QString &base64String) {
-    // Convert Base64 QString to QByteArray
-    QByteArray byteArray = QByteArray::fromBase64(base64String.toUtf8());
-
-    // Load image from QByteArray
-    QImage image;
-    if (!image.loadFromData(byteArray)) {
-        qDebug() << "Failed to load image from Base64 data.";
+void ProductWidget::applyPixmap(QLabel *label, const QPixmap &pixmap) {
+    if (!label || pixmap.isNull()) {
         return;
     }
-
-    // Convert QImage to QPixmap and set it to QLabel
-    label->setPixmap(QPixmap::fromImage(image));
-    label->setFixedSize(ScreenUtils::px(110), ScreenUtils::px(110));
-    label->setScaledContents(true);  // Ensure image scales properly in QLabel
+    label->setPixmap(pixmap.scaled(ScreenUtils::px(96), ScreenUtils::px(96),
+                                   Qt::KeepAspectRatio, Qt::SmoothTransformation));
 }
 
 ProductWidget::~ProductWidget()

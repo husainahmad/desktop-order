@@ -413,7 +413,7 @@ void OrderForm::updateProductLeftTopPanel(const QJsonArray &dataArray) {
         ProductImage productImage(
             imageItem["id"].toInt(),
             imageItem["fileName"].toString(),
-            imageItem["imageBlob"].toString(),
+            imageItem["url"].toString(),
             imageItem["mimeType"].toString()
             );
 

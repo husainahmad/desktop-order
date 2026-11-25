@@ -8,6 +8,7 @@
 #include <QMouseEvent>
 #include <QEnterEvent>
 #include <QEvent>
+#include <QPixmap>
 #include "product.h"
 
 class ProductWidget : public QWidget
@@ -26,9 +27,8 @@ protected:
     void enterEvent(QEnterEvent *event) override;
     void leaveEvent(QEvent *event) override;
 
-private slots:
-    void setImageFromBase64(QLabel *label, const QString &base64String);
 private:
+    void applyPixmap(QLabel *label, const QPixmap &pixmap);
     QLocale locale;
     QLabel *hoverBadge = nullptr;
     QLabel *m_imageLabel = nullptr;

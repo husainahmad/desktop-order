@@ -2,7 +2,7 @@
 
 Harmoni POS Desktop is the Qt Widgets counter checkout client for the Harmoni POS platform. It is a native C++ desktop app that talks to the gateway over HTTP using absolute endpoint URLs from `config.app.ini`; it does not connect to any database directly.
 
-The checked-in template `config/app.ini` points every service at `http://103.150.197.7:8080`. qmake copies it to `config.app.ini` in the build output, where the running app reads it. Treat that file as local runtime configuration: it stores tokens and user details, so keep credentials out of commits.
+The checked-in template `config/app.ini` points every service at `http://localhost:8080`. qmake copies it to `config.app.ini` in the build output, where the running app reads it. Treat that file as local runtime configuration: it stores tokens and user details, so keep credentials out of commits.
 
 ## What it does
 
